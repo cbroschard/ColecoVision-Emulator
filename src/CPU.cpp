@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 Christopher Broschard
+// Copyright (c) 2026 Christopher Broschard
 // All rights reserved.
 //
 // This source code is provided for personal, educational, and
