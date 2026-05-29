@@ -35,3 +35,6 @@ BIOS*
 # Temp/Debug files
 *.txt
 *.log
+
+# Keep project license tracked
+!License.txt
