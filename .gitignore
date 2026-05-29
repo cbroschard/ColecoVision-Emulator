@@ -1,0 +1,37 @@
+# Build folders
+bin/
+obj/
+build/
+Debug/
+Release/
+
+# Code::Blocks
+*.layout
+*.depend
+*.cbp
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ROMs / BIOS / copyrighted files
+*.rom
+*.bin
+*.col
+bios*
+BIOS*
+
+# Temp/Debug files
+*.txt
+*.log
