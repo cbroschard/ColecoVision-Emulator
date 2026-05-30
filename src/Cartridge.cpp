@@ -21,12 +21,33 @@ Cartridge::~Cartridge()
 
 void Cartridge::reset()
 {
-
+    // no-op for now
 }
 
 bool Cartridge::loadROM(const std::string& ROM)
 {
-    return false;
+    std::ifstream file(ROM, std::ios::binary);
+    if (!file)
+    {
+        cartLoaded = false;
+        return false;
+    }
+
+    // Clear cartridge space first.
+    rom.assign(0x8000, 0x00);
+
+    file.read(reinterpret_cast<char*>(rom.data()), rom.size());
+
+    const std::streamsize bytesRead = file.gcount();
+
+    if (bytesRead <= 0)
+    {
+        cartLoaded = false;
+        return false;
+    }
+
+    cartLoaded = true;
+    return true;
 }
 
 uint8_t Cartridge::read(uint16_t offset) const

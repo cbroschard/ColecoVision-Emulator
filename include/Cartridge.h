@@ -9,6 +9,7 @@
 #define CARTRIDGE_H
 
 #include <cstdint>
+#include <fstream>
 #include <string>
 #include <vector>
 
