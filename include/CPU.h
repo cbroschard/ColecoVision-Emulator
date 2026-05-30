@@ -10,7 +10,7 @@
 
 #include <array>
 #include <cstdint>
-#include "Memory.h"
+#include "Bus.h"
 
 class CPU
 {
@@ -18,7 +18,7 @@ class CPU
         CPU();
         virtual ~CPU();
 
-        inline void attachMemoryInstance(Memory* mem) { this->mem = mem; }
+        inline void attachBusInstance(Bus* bus) { this->bus = bus; }
 
         void reset();
 
@@ -26,9 +26,9 @@ class CPU
 
     private:
         // Non-owning pointers
-        Memory* mem;
+        Bus* bus;
 
-                inline static constexpr std::array<uint8_t, 256> CYCLE_COUNTS =
+        inline static constexpr std::array<uint8_t, 256> CYCLE_COUNTS =
         {{
             // 0x00 - 0x0F
              4, 10,  7,  6,  4,  4,  7,  4,  4, 11,  7,  6,  4,  4,  7,  4,

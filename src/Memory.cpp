@@ -7,8 +7,7 @@
 // strictly prohibited without the prior written consent of the author.
 #include "Memory.h"
 
-Memory::Memory() :
-    cart(nullptr)
+Memory::Memory()
 {
     mem.fill(0x00);
 }

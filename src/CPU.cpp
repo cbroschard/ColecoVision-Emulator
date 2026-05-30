@@ -8,7 +8,7 @@
 #include "CPU.h"
 
 CPU::CPU() :
-    mem(nullptr),
+    bus(nullptr),
     A(0),
     F(0),
     B(0),
