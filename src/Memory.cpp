@@ -30,7 +30,7 @@ uint8_t Memory::read(uint16_t address) const
         return bios[address];
     else if (address >= RAM_START && address <= RAM_END)
         return mem[address & 0x03FF];
-    else if ((address >= CART_START && address <= CART_END) && cart)
+    else if (address >= CART_START && address <= CART_END)
         return cart ? cart->read(address - 0x8000) : 0xFF;
     else
         return 0xFF;
