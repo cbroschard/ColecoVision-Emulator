@@ -41,6 +41,7 @@ BIOS*
 
 # Keep project license tracked
 !License.txt
+!licenses/**
 
 # Keep Include/Src Debug folder
 !include/Debug/
