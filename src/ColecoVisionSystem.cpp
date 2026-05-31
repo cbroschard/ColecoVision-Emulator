@@ -15,6 +15,7 @@ ColecoVisionSystem::ColecoVisionSystem()
     controller1 = std::make_unique<Controller>();
     controller2 = std::make_unique<Controller>();
     cpu = std::make_unique<CPU>();
+    inputManager = std::make_unique<InputManager>();
     mem = std::make_unique<Memory>();
     psg = std::make_unique<PSG>();
     vdp = std::make_unique<VDP>();
@@ -49,7 +50,7 @@ void ColecoVisionSystem::run()
     reset();
 
     // Temporary test loop
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 2000; ++i)
     {
         cpu->step();
     }
@@ -79,6 +80,9 @@ void ColecoVisionSystem::wireUp()
     bus->attachVDPInstance(vdp.get());
 
     cpu->attachBusInstance(bus.get());
+
+    inputManager->attachController1(controller1.get());
+    inputManager->attachController2(controller2.get());
 
     mem->attachCartridgeInstance(cart.get());
 }
