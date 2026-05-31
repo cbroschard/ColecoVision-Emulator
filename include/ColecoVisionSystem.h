@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include "Bus.h"
 #include "Cartridge.h"
 #include "Controller.h"
@@ -23,6 +24,15 @@ class ColecoVisionSystem
         ColecoVisionSystem();
         virtual ~ColecoVisionSystem();
 
+        void reset();
+
+        void run();
+
+        void setBIOSPath(const std::string& path);
+
+        bool loadBIOS(const std::string& path);
+        bool loadCartridge(const std::string& path);
+
     protected:
 
     private:
@@ -34,6 +44,8 @@ class ColecoVisionSystem
         std::unique_ptr<Memory> mem;
         std::unique_ptr<PSG> psg;
         std::unique_ptr<VDP> vdp;
+
+        std::string biosPath;
 
         void wireUp();};
 
