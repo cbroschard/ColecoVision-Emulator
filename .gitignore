@@ -36,5 +36,8 @@ BIOS*
 *.txt
 *.log
 
+# Config files
+*.cfg
+
 # Keep project license tracked
 !License.txt
