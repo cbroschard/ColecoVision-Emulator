@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include "Bus.h"
 
 class CPU
@@ -22,11 +23,16 @@ class CPU
 
         void reset();
 
+        int step();
+
     protected:
 
     private:
         // Non-owning pointers
         Bus* bus;
+
+        using OpcodeHandler = std::function<int()>;
+        std::array<OpcodeHandler, 256> opcodeTable;
 
         inline static constexpr std::array<uint8_t, 256> CYCLE_COUNTS =
         {{
@@ -274,6 +280,70 @@ class CPU
 
         // Timing
         uint64_t cycles;
+
+        uint8_t fetch8();
+        uint16_t fetch16();
+
+        uint8_t read8(uint16_t address) const;
+        void write8(uint16_t address, uint8_t value);
+
+        void writeIO(uint8_t port, uint8_t value);
+        uint8_t readIO(uint8_t port);
+
+        // Stack helpers
+        void push16(uint16_t value);
+        uint16_t pop16();
+
+        inline uint16_t getBC() const { return static_cast<uint16_t>((B << 8) | C); }
+        inline uint16_t getDE() const { return static_cast<uint16_t>((D << 8) | E); }
+        inline uint16_t getHL() const { return static_cast<uint16_t>((H << 8) | L); }
+
+        void setBC(uint16_t value);
+        void setDE(uint16_t value);
+        void setHL(uint16_t value);
+
+        uint8_t getReg8(uint8_t code) const;
+        void setReg8(uint8_t code, uint8_t value);
+
+        void compareA(uint8_t value);
+
+        void initializeOpcodeTable();
+
+        int unimplementedOpcode(uint8_t opcode, uint16_t pc);
+
+        int opCALLImm16();
+        int opRET();
+
+        int opCPImm();
+
+        inline int opNOP() { return 4;}
+        int opHALT();
+
+        int opLDAImm();
+        int opLDBImm();
+        int opLDCImm();
+        int opLDDImm();
+        int opLDEImm();
+        int opLDHImm();
+        int opLDLImm();
+
+        int opLDBCImm16();
+        int opLDDEImm16();
+        int opLDHLImm16();
+        int opLDSPImm16();
+
+        int opJPNZImm16();
+        int opJPImm16();
+
+        int opOUTImmA();
+
+        int opLDHLFromImm16Address();
+        int opLDAddrImm16FromHL();
+
+        int executeCB();
+        int executeED();
+        int executeDD();
+        int executeFD();
 };
 
 #endif // CPU_H
