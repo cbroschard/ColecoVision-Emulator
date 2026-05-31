@@ -187,6 +187,69 @@ uint16_t CPU::pop16()
     return static_cast<uint16_t>(lo | (hi << 8));
 }
 
+uint8_t CPU::dec8(uint8_t value)
+{
+    const uint8_t result = static_cast<uint8_t>(value - 1);
+
+    // Preserve carry. DEC does not affect C.
+    const uint8_t carry = F & FLAG_C;
+
+    F = carry;
+
+    if (result & 0x80)
+        F |= FLAG_S;
+
+    if (result == 0)
+        F |= FLAG_Z;
+
+    // Half borrow from bit 4
+    if ((value & 0x0F) == 0x00)
+        F |= FLAG_H;
+
+    // Overflow: 0x80 - 1 = 0x7F
+    if (value == 0x80)
+        F |= FLAG_PV;
+
+    // DEC is subtraction
+    F |= FLAG_N;
+
+    // Undocumented flags from result bits 5 and 3
+    F |= result & (FLAG_Y | FLAG_X);
+
+    return result;
+}
+
+void CPU::orA(uint8_t value)
+{
+    A = static_cast<uint8_t>(A | value);
+
+    F = 0;
+
+    if (A & 0x80)
+        F |= FLAG_S;
+
+    if (A == 0)
+        F |= FLAG_Z;
+
+    // OR clears H, N, and C.
+
+    // Parity flag
+    uint8_t bits = A;
+    bool parity = true;
+
+    while (bits)
+    {
+        parity = !parity;
+        bits &= static_cast<uint8_t>(bits - 1);
+    }
+
+    if (parity)
+        F |= FLAG_PV;
+
+    // Undocumented flags from result bits 5 and 3
+    F |= A & (FLAG_Y | FLAG_X);
+}
+
 void CPU::setBC(uint16_t value)
 {
     B = static_cast<uint8_t>(value >> 8);
@@ -282,6 +345,17 @@ void CPU::initializeOpcodeTable()
         };
     }
 
+    // OR r: 0xB0-0xB7
+    for (int op = 0xB0; op <= 0xB7; ++op)
+    {
+        opcodeTable[op] = [this, op]()
+        {
+            const uint8_t src = static_cast<uint8_t>(op & 0x07);
+            orA(getReg8(src));
+            return (src == 6) ? 7 : 4;
+        };
+    }
+
     // LD r,r block: 0x40-0x7F, except 0x76 HALT
     for (int op = 0x40; op <= 0x7F; ++op)
     {
@@ -300,6 +374,10 @@ void CPU::initializeOpcodeTable()
         };
     }
 
+    // ALU / logic
+    opcodeTable[0xAF] = [this]() { return opXORA(); }; // XOR A
+    opcodeTable[0xF6] = [this]() { return opORImm(); }; // OR n
+
     // Calls / returns
     opcodeTable[0xCD] = [this]() { return opCALLImm16(); }; // CALL nn
     opcodeTable[0xC9] = [this]() { return opRET(); }; // RET
@@ -310,6 +388,21 @@ void CPU::initializeOpcodeTable()
     // Control
     opcodeTable[0x00] = [this]() { return opNOP(); };
     opcodeTable[0x76] = [this]() { return opHALT(); };
+
+    // INC / DEC
+    opcodeTable[0x05] = [this]() { return opDECB(); }; // DEC B
+    opcodeTable[0x0D] = [this]() { return opDECC(); }; // DEC C
+    opcodeTable[0x15] = [this]() { return opDECD(); }; // DEC D
+    opcodeTable[0x1D] = [this]() { return opDECE(); }; // DEC E
+    opcodeTable[0x25] = [this]() { return opDECH(); }; // DEC H
+    opcodeTable[0x2D] = [this]() { return opDECL(); }; // DEC L
+    opcodeTable[0x3D] = [this]() { return opDECA(); }; // DEC A
+
+    // 16-bit INC / DEC
+    opcodeTable[0x0B] = [this]() { return opDECBC(); }; // DEC BC
+    opcodeTable[0x1B] = [this]() { return opDECDE(); }; // DEC DE
+    opcodeTable[0x2B] = [this]() { return opDECHL(); }; // DEC HL
+    opcodeTable[0x3B] = [this]() { return opDECSP(); }; // DEC SP
 
     // Jumps
     opcodeTable[0xC2] = [this]() { return opJPNZImm16(); }; // JP NZ,nn
@@ -333,9 +426,22 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x2E] = [this]() { return opLDLImm(); }; // LD L,n
     opcodeTable[0x3E] = [this]() { return opLDAImm(); }; // LD A,n
 
+    // 8-bit loads / stores
+    opcodeTable[0x32] = [this]() { return opLDAddrImm16FromA(); }; // LD (nn),A
+    opcodeTable[0x3A] = [this]() { return opLDAFromAddrImm16(); }; // LD A,(nn)
+
     // 16-bit loads
     opcodeTable[0x22] = [this]() { return opLDAddrImm16FromHL(); }; // LD (nn),HL
     opcodeTable[0x2A] = [this]() { return opLDHLFromImm16Address(); }; // LD HL,(nn)
+
+    // Prefixes
+    opcodeTable[0xCB] = [this]() { return executeCB(); };
+    opcodeTable[0xDD] = [this]() { return executeDD(); };
+    opcodeTable[0xED] = [this]() { return executeED(); };
+    opcodeTable[0xFD] = [this]() { return executeFD(); };
+
+    // Relative jumps
+    opcodeTable[0x20] = [this]() { return opJRNZ(); }; // JR NZ,e
 }
 
 int CPU::unimplementedOpcode(uint8_t opcode, uint16_t pc)
@@ -355,6 +461,22 @@ int CPU::unimplementedOpcode(uint8_t opcode, uint16_t pc)
     halted = true;
 
     return 4;
+}
+
+int CPU::opXORA()
+{
+    A = 0x00;
+
+    F = FLAG_Z; // result is zero
+
+    return 4;
+}
+
+int CPU::opORImm()
+{
+    const uint8_t value = fetch8();
+    orA(value);
+    return 7;
 }
 
 int CPU::opCALLImm16()
@@ -385,6 +507,72 @@ int CPU::opHALT()
 {
     halted = true;
     return 4;
+}
+
+int CPU::opDECA()
+{
+    A = dec8(A);
+    return 4;
+}
+
+int CPU::opDECB()
+{
+    B = dec8(B);
+    return 4;
+}
+
+int CPU::opDECC()
+{
+    C = dec8(C);
+    return 4;
+}
+
+int CPU::opDECD()
+{
+    D = dec8(D);
+    return 4;
+}
+
+int CPU::opDECE()
+{
+    E = dec8(E);
+    return 4;
+}
+
+int CPU::opDECH()
+{
+    H = dec8(H);
+    return 4;
+}
+
+int CPU::opDECL()
+{
+    L = dec8(L);
+    return 4;
+}
+
+int CPU::opDECBC()
+{
+    setBC(static_cast<uint16_t>(getBC() - 1));
+    return 6;
+}
+
+int CPU::opDECDE()
+{
+    setDE(static_cast<uint16_t>(getDE() - 1));
+    return 6;
+}
+
+int CPU::opDECHL()
+{
+    setHL(static_cast<uint16_t>(getHL() - 1));
+    return 6;
+}
+
+int CPU::opDECSP()
+{
+    SP--;
+    return 6;
 }
 
 int CPU::opLDAImm()
@@ -427,6 +615,24 @@ int CPU::opLDLImm()
 {
     L = fetch8();
     return 7;
+}
+
+int CPU::opLDAddrImm16FromA()
+{
+    const uint16_t address = fetch16();
+
+    write8(address, A);
+
+    return 13;
+}
+
+int CPU::opLDAFromAddrImm16()
+{
+    const uint16_t address = fetch16();
+
+    A = read8(address);
+
+    return 13;
 }
 
 int CPU::opLDBCImm16()
@@ -501,4 +707,162 @@ int CPU::opLDAddrImm16FromHL()
     write8(static_cast<uint16_t>(address + 1), H);
 
     return 16;
+}
+
+int CPU::opJRNZ()
+{
+    const int8_t offset = static_cast<int8_t>(fetch8());
+
+    if ((F & FLAG_Z) == 0)
+    {
+        PC = static_cast<uint16_t>(PC + offset);
+        return 12;
+    }
+
+    return 7;
+}
+
+int CPU::executeCB()
+{
+    const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
+    const uint8_t opcode = fetch8();
+
+    std::cerr
+        << "Unimplemented Z80 CB opcode $"
+        << std::hex << std::uppercase
+        << std::setw(2) << std::setfill('0')
+        << static_cast<int>(opcode)
+        << " at PC=$"
+        << std::setw(4) << prefixPC
+        << std::dec << std::nouppercase
+        << std::endl;
+
+    halted = true;
+    return 4;
+}
+
+int CPU::executeDD()
+{
+    const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
+    const uint8_t opcode = fetch8();
+
+    switch (opcode)
+    {
+        case 0x21: // LD IX,nn
+            IX = fetch16();
+            return 14;
+
+        case 0x23: // INC IX
+            IX++;
+            return 10;
+
+        case 0x2A: // LD IX,(nn)
+        {
+            const uint16_t address = fetch16();
+
+            const uint8_t lo = read8(address);
+            const uint8_t hi = read8(static_cast<uint16_t>(address + 1));
+
+            IX = static_cast<uint16_t>(lo | (hi << 8));
+
+            return 20;
+        }
+
+        case 0x77: // LD (IX+d),A
+        {
+            const int8_t displacement = static_cast<int8_t>(fetch8());
+            const uint16_t address = static_cast<uint16_t>(IX + displacement);
+
+            write8(address, A);
+
+            return 19;
+        }
+
+        default:
+            std::cerr
+                << "Unimplemented Z80 DD opcode $"
+                << std::hex << std::uppercase
+                << std::setw(2) << std::setfill('0')
+                << static_cast<int>(opcode)
+                << " at PC=$"
+                << std::setw(4) << prefixPC
+                << std::dec << std::nouppercase
+                << std::endl;
+
+            halted = true;
+            return 4;
+    }
+}
+
+int CPU::executeED()
+{
+    const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
+    const uint8_t opcode = fetch8();
+
+    std::cerr
+        << "Unimplemented Z80 ED opcode $"
+        << std::hex << std::uppercase
+        << std::setw(2) << std::setfill('0')
+        << static_cast<int>(opcode)
+        << " at PC=$"
+        << std::setw(4) << prefixPC
+        << std::dec << std::nouppercase
+        << std::endl;
+
+    halted = true;
+    return 4;
+}
+
+int CPU::executeFD()
+{
+    const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
+    const uint8_t opcode = fetch8();
+
+    switch (opcode)
+    {
+        case 0x21: // LD IY,nn
+            IY = fetch16();
+            return 14;
+
+        case 0x23: // INC IY
+            IY++;
+            return 10;
+
+        case 0x2A: // LD IY,(nn)
+        {
+            const uint16_t address = fetch16();
+
+            const uint8_t lo = read8(address);
+            const uint8_t hi = read8(static_cast<uint16_t>(address + 1));
+
+            IY = static_cast<uint16_t>(lo | (hi << 8));
+
+            return 20;
+        }
+
+        case 0x77: // LD (IY+d),A
+        {
+            const int8_t displacement = static_cast<int8_t>(fetch8());
+            const uint16_t address = static_cast<uint16_t>(IY + displacement);
+
+            write8(address, A);
+
+            return 19;
+        }
+
+        default:
+            std::cerr
+                << "Unimplemented Z80 FD opcode $"
+                << std::hex << std::uppercase
+                << std::setw(2) << std::setfill('0')
+                << static_cast<int>(opcode)
+                << " at PC=$"
+                << std::setw(4) << prefixPC
+                << std::dec
+                << std::nouppercase
+                << std::endl;
+
+            halted = true;
+            return 4;
+    }
 }

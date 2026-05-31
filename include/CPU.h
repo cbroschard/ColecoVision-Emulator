@@ -294,6 +294,10 @@ class CPU
         void push16(uint16_t value);
         uint16_t pop16();
 
+        // Opcode helpers
+        uint8_t dec8(uint8_t value);
+        void orA(uint8_t value);
+
         inline uint16_t getBC() const { return static_cast<uint16_t>((B << 8) | C); }
         inline uint16_t getDE() const { return static_cast<uint16_t>((D << 8) | E); }
         inline uint16_t getHL() const { return static_cast<uint16_t>((H << 8) | L); }
@@ -311,6 +315,9 @@ class CPU
 
         int unimplementedOpcode(uint8_t opcode, uint16_t pc);
 
+        int opXORA();
+        int opORImm();
+
         int opCALLImm16();
         int opRET();
 
@@ -319,6 +326,19 @@ class CPU
         inline int opNOP() { return 4;}
         int opHALT();
 
+        int opDECA();
+        int opDECB();
+        int opDECC();
+        int opDECD();
+        int opDECE();
+        int opDECH();
+        int opDECL();
+
+        int opDECBC();
+        int opDECDE();
+        int opDECHL();
+        int opDECSP();
+
         int opLDAImm();
         int opLDBImm();
         int opLDCImm();
@@ -326,6 +346,9 @@ class CPU
         int opLDEImm();
         int opLDHImm();
         int opLDLImm();
+
+        int opLDAddrImm16FromA();
+        int opLDAFromAddrImm16();
 
         int opLDBCImm16();
         int opLDDEImm16();
@@ -339,6 +362,8 @@ class CPU
 
         int opLDHLFromImm16Address();
         int opLDAddrImm16FromHL();
+
+        opJRNZ();
 
         int executeCB();
         int executeED();
