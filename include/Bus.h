@@ -8,7 +8,7 @@
 #ifndef BUS_H
 #define BUS_H
 
-#include "Cartridge.h"
+#include <cstdint>
 #include "Controller.h"
 #include "Memory.h"
 #include "PSG.h"
@@ -20,18 +20,22 @@ class Bus
         Bus();
         virtual ~Bus();
 
-    inline void attachCartridgeInstance(Cartridge* cart) { this->cart = cart; }
     inline void attachController1Instance(Controller* controller1) { this->controller1 = controller1; }
     inline void attachController2Instance(Controller* controller2) { this->controller2 = controller2; }
     inline void attachMemoryInstance(Memory* mem) { this->mem = mem; }
     inline void attachPSGInstance(PSG* psg) { this->psg = psg; }
     inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
+    uint8_t readMemory(uint16_t adddress);
+    void writeMemory(uint16_t address, uint8_t value);
+
+    uint8_t readIO(uint8_t port);
+    void writeIO(uint8_t port, uint8_t value);
+
     protected:
 
     private:
         // Non-owning pointers
-        Cartridge* cart;
         Controller* controller1;
         Controller* controller2;
         Memory* mem;
