@@ -234,6 +234,19 @@ class CPU
             FLAG_C  = 0x01  // Carry
         };
 
+        inline void setFlag(uint8_t flag, bool enabled)
+        {
+            if (enabled)
+                F |= flag;
+            else
+                F &= static_cast<uint8_t>(~flag);
+        }
+
+        inline bool getFlag(uint8_t flag) const
+        {
+            return (F & flag) != 0;
+        }
+
         // Main registers
         uint8_t A;
         uint8_t F;
@@ -290,13 +303,20 @@ class CPU
         void writeIO(uint8_t port, uint8_t value);
         uint8_t readIO(uint8_t port);
 
+        // Index helpers
+        uint16_t add16Index(uint16_t lhs, uint16_t rhs);
+
         // Stack helpers
         void push16(uint16_t value);
         uint16_t pop16();
 
         // Opcode helpers
+        uint8_t inc8(uint8_t value);
         uint8_t dec8(uint8_t value);
         void orA(uint8_t value);
+        void addA(uint8_t value);
+        void addHL(uint16_t value);
+        void sbcA(uint8_t value);
 
         inline uint16_t getBC() const { return static_cast<uint16_t>((B << 8) | C); }
         inline uint16_t getDE() const { return static_cast<uint16_t>((D << 8) | E); }
@@ -317,14 +337,40 @@ class CPU
 
         int opXORA();
         int opORImm();
+        int opADDImm();
 
         int opCALLImm16();
         int opRET();
+        int opRETZ();
+
+        int opPUSHBC();
+        int opPUSHDE();
+        int opPUSHHL();
+        int opPUSHAF();
+
+        int opPOPBC();
+        int opPOPDE();
+        int opPOPHL();
+        int opPOPAF();
 
         int opCPImm();
 
+        int opEXDEHL();
+
         inline int opNOP() { return 4;}
         int opHALT();
+
+        int opINCBC();
+        int opINCA();
+        int opINCB();
+        int opINCC();
+        int opINCDE();
+        int opINCD();
+        int opINCE();
+        int opINCHL();
+        int opINCH();
+        int opINCL();
+        int opINCSP();
 
         int opDECA();
         int opDECB();
@@ -338,6 +384,11 @@ class CPU
         int opDECDE();
         int opDECHL();
         int opDECSP();
+
+        int opADDHLBC();
+        int opADDHLDE();
+        int opADDHLHL();
+        int opADDHLSP();
 
         int opLDAImm();
         int opLDBImm();
@@ -357,13 +408,21 @@ class CPU
 
         int opJPNZImm16();
         int opJPImm16();
+        int opJPHL();
+        int opJPMImm16();
 
         int opOUTImmA();
+        int opINAImm();
 
         int opLDHLFromImm16Address();
         int opLDAddrImm16FromHL();
 
-        opJRNZ();
+        int opJRNZ();
+        int opJRZ();
+        int opDJNZ();
+        int opJR();
+
+        int opRRA();
 
         int executeCB();
         int executeED();
