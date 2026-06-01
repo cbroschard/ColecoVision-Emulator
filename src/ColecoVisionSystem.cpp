@@ -31,11 +31,15 @@ ColecoVisionSystem::~ColecoVisionSystem()
 
 void ColecoVisionSystem::reset()
 {
+    // Hardware resets
     mem->reset();
     cart->reset();
     cpu->reset();
     vdp->reset();
     psg->reset();
+
+    // Reset controllers
+    inputManager->reset();
 }
 
 void ColecoVisionSystem::run()
@@ -69,7 +73,7 @@ void ColecoVisionSystem::run()
                 running = false;
             }
 
-            //inputManager->handleEvent(event);
+            inputManager->handleEvent(event);
         }
 
         int frameCycles = 0;
@@ -82,7 +86,6 @@ void ColecoVisionSystem::run()
 
             vdp->tick(cpuCycles);
 
-            // Later:
             // psg->tick(cpuCycles);
         }
 
