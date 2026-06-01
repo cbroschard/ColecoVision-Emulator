@@ -7,7 +7,9 @@
 // strictly prohibited without the prior written consent of the author.
 #include "InputManager.h"
 
-InputManager::InputManager()
+InputManager::InputManager() :
+    controller1(nullptr),
+    controller2(nullptr)
 {
 
 }
