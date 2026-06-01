@@ -12,7 +12,9 @@ VDP::VDP() :
     readBuffer(0),
     statusReg(0),
     controlLatch(false),
-    controlFirstByte(0)
+    controlFirstByte(0),
+    cycleCounter(0),
+    scanline(0)
 {
     vram.fill(0x00);
     regs.fill(0x00);
@@ -27,9 +29,32 @@ void VDP::reset()
     statusReg           = 0;
     controlLatch        = false;
     controlFirstByte    = 0;
+    cycleCounter        = 0;
+    scanline            = 0;
 
     vram.fill(0x00);
     regs.fill(0x00);
+}
+
+void VDP::tick(int cpuCycles)
+{
+    cycleCounter += cpuCycles;
+
+    while (cycleCounter >= CPU_CYCLES_PER_SCANLINE)
+    {
+        cycleCounter -= CPU_CYCLES_PER_SCANLINE;
+        scanline++;
+
+        if (scanline == VBLANK_START_LINE)
+        {
+            statusReg |= 0x80; // VBlank flag
+        }
+
+        if (scanline >= SCANLINES_PER_FRAME)
+        {
+            scanline = 0;
+        }
+    }
 }
 
 uint8_t VDP::readStatus()
@@ -114,13 +139,63 @@ void VDP::writeData(uint8_t value)
 {
     vram[address & 0x3FFF] = value;
 
+    readBuffer = value;
+
     address = (address + 1) & 0x3FFF;
 
-    // A data write resets the control latch.
     controlLatch = false;
 }
 
 void VDP::updateModeFromRegisters()
 {
 
+}
+
+void VDP::renderFrame(VideoOutput& output)
+{
+    const uint16_t nameTableBase =
+        static_cast<uint16_t>((regs[2] & 0x0F) << 10);
+
+    const uint16_t colorTableBase =
+        static_cast<uint16_t>(regs[3] << 6);
+
+    const uint16_t patternTableBase =
+        static_cast<uint16_t>((regs[4] & 0x07) << 11);
+
+    for (int tileY = 0; tileY < 24; ++tileY)
+    {
+        for (int tileX = 0; tileX < 32; ++tileX)
+        {
+            const uint16_t nameAddr =
+                static_cast<uint16_t>(nameTableBase + tileY * 32 + tileX);
+
+            const uint8_t patternIndex = vram[nameAddr & 0x3FFF];
+
+            const uint8_t colorByte =
+                vram[(colorTableBase + (patternIndex >> 3)) & 0x3FFF];
+
+            uint8_t fg = static_cast<uint8_t>(colorByte >> 4);
+            uint8_t bg = static_cast<uint8_t>(colorByte & 0x0F);
+
+            // TMS9918 color 0 means transparent. For now, make it visible as black.
+            if (fg == 0) fg = 15;
+            if (bg == 0) bg = 1;
+
+            for (int row = 0; row < 8; ++row)
+            {
+                const uint8_t patternByte =
+                    vram[(patternTableBase + patternIndex * 8 + row) & 0x3FFF];
+
+                for (int col = 0; col < 8; ++col)
+                {
+                    const bool pixelOn = (patternByte & (0x80 >> col)) != 0;
+
+                    const int x = tileX * 8 + col;
+                    const int y = tileY * 8 + row;
+
+                    output.setPixel(x, y, pixelOn ? fg : bg);
+                }
+            }
+        }
+    }
 }

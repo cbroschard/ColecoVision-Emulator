@@ -52,6 +52,10 @@ void ColecoVisionSystem::run()
 
     reset();
 
+    constexpr int CPU_CLOCK_HZ = 3579545;
+    constexpr int FPS = 60;
+    constexpr int CYCLES_PER_FRAME = CPU_CLOCK_HZ / FPS;
+
     bool running = true;
 
     while (running)
@@ -65,22 +69,26 @@ void ColecoVisionSystem::run()
                 running = false;
             }
 
-            // inputManager->handleEvent(event);
+            //inputManager->handleEvent(event);
         }
 
         int frameCycles = 0;
 
         while (frameCycles < CYCLES_PER_FRAME)
         {
-            frameCycles += cpu->step();
+            const int cpuCycles = cpu->step();
 
-            // vdp->tick(cpuCycles);
+            frameCycles += cpuCycles;
+
+            vdp->tick(cpuCycles);
+
+            // Later:
             // psg->tick(cpuCycles);
         }
 
         videoOutput->clear();
 
-        // vdp->renderFrame(*videoOutput);
+        vdp->renderFrame(*videoOutput);
 
         videoOutput->present();
 

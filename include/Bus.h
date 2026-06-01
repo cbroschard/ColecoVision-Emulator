@@ -9,6 +9,8 @@
 #define BUS_H
 
 #include <cstdint>
+#include <iostream>
+#include <iomanip>
 #include "Controller.h"
 #include "Memory.h"
 #include "PSG.h"
