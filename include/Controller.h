@@ -66,6 +66,8 @@ class Controller
         std::array<bool, static_cast<size_t>(ControllerButton::Count)> buttons{};
 
         ControllerMode mode = ControllerMode::Joystick;
+
+        uint8_t readKeypadNibble() const;
 };
 
 #endif // CONTROLLER_H
