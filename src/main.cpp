@@ -16,7 +16,8 @@ po::options_description get_config_file_options()
 {
     po::options_description desc("Configuration File Options");
     desc.add_options()
-        ("BIOS", po::value<std::string>()->required(), "ColecoVision BIOS");
+        ("BIOS", po::value<std::string>()->required(), "ColecoVision BIOS")
+        ("Cartridge", po::value<std::string>()->required(), "Cartridge to load");
     return desc;
 }
 
@@ -56,6 +57,7 @@ int main()
         }
 
         system.setBIOSPath(vmConfig["BIOS"].as<std::string>());
+        system.loadCartridge(vmConfig["Cartridge"].as<std::string>());
         system.run();
 
         return 0;
