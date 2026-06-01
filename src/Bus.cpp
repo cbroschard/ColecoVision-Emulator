@@ -37,12 +37,6 @@ void Bus::writeMemory(uint16_t address, uint8_t value)
 
 uint8_t Bus::readIO(uint8_t port)
 {
-    #ifdef Debug
-    std::cout << "IN  port $"
-              << std::hex << std::uppercase << static_cast<int>(port)
-              << std::dec << std::endl;
-    #endif
-
     // VDP read ports: BE = data, BF = status
     if ((port & 0xFE) == 0xBE)
     {
@@ -50,42 +44,35 @@ uint8_t Bus::readIO(uint8_t port)
             return 0xFF;
 
         if (port & 0x01)
-            return vdp->readStatus();   // BF
+            return vdp->readStatus();
         else
-            return vdp->readData();     // BE
+            return vdp->readData();
     }
 
-    switch (port & 0xE0)
+    // Controller read range: $E0-$FF.
+    // $FC = controller 1, $FF = controller 2.
+    if ((port & 0xE0) == 0xE0)
     {
-        case 0xE0:
-            if (port & 0x02)
-                return controller2 ? controller2->read() : 0xFF;
-            else
-                return controller1 ? controller1->read() : 0xFF;
+        if ((port & 0x03) == 0x03)
+            return controller2 ? controller2->read() : 0xFF;
 
-        default:
-            return 0xFF;
+        return controller1 ? controller1->read() : 0xFF;
     }
+
+    return 0xFF;
 }
 
 void Bus::writeIO(uint8_t port, uint8_t value)
 {
-    #ifdef Debug
-    std::cout << "OUT port $"
-              << std::hex << std::uppercase << static_cast<int>(port)
-              << " value $" << static_cast<int>(value)
-              << std::dec << std::endl;
-    #endif
-
     // VDP write ports: BE = data, BF = control
     if ((port & 0xFE) == 0xBE)
     {
         if (vdp)
         {
             if (port & 0x01)
-                vdp->writeControl(value);   // BF
+                vdp->writeControl(value);
             else
-                vdp->writeData(value);      // BE
+                vdp->writeData(value);
         }
 
         return;
@@ -93,13 +80,8 @@ void Bus::writeIO(uint8_t port, uint8_t value)
 
     switch (port & 0xE0)
     {
-        case 0xA0:
-            // PSG write range: A0-BF, except BE/BF handled above
-            if (psg)
-                psg->write(value);
-            return;
-
-        case 0xC0:
+        case 0x80:
+            // Controller keypad/right-fire mode: $80-$9F
             if (controller1)
                 controller1->setControllerMode(ControllerMode::Keypad);
 
@@ -108,13 +90,25 @@ void Bus::writeIO(uint8_t port, uint8_t value)
 
             return;
 
-        case 0xE0:
+        case 0xA0:
+            // PSG write range: $A0-$BF, except BE/BF handled above.
+            if (psg)
+                psg->write(value);
+            return;
+
+        case 0xC0:
+            // Controller joystick/left-fire mode: $C0-$DF
             if (controller1)
                 controller1->setControllerMode(ControllerMode::Joystick);
 
             if (controller2)
                 controller2->setControllerMode(ControllerMode::Joystick);
 
+            return;
+
+        case 0xE0:
+            if (psg)
+                psg->write(value);
             return;
 
         default:
