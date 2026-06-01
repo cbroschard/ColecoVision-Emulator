@@ -41,6 +41,9 @@ uint8_t Bus::readIO(uint8_t port)
     {
         case 0xA0:
             // VDP read range: A0-BF
+            if (!vdp)
+                return 0xFF;
+
             if (port & 0x01)
                 return vdp->readStatus();   // A1, A3, A5 ... BF
             else
@@ -48,12 +51,10 @@ uint8_t Bus::readIO(uint8_t port)
 
         case 0xE0:
             // Controller read range: E0-FF
-            // E0/E1 = controller 1
-            // E2/E3 = controller 2
             if (port & 0x02)
-                return controller2->read();
+                return controller2 ? controller2->read() : 0xFF;
             else
-                return controller1->read();
+                return controller1 ? controller1->read() : 0xFF;
 
         default:
             return 0xFF;
@@ -66,24 +67,39 @@ void Bus::writeIO(uint8_t port, uint8_t value)
     {
         case 0x80:
             // VDP write range: 80-9F
-            if (port & 0x01)
-                vdp->writeControl(value);   // 81, 83, 85 ... 9F
-            else
-                vdp->writeData(value);      // 80, 82, 84 ... 9E
+            if (vdp)
+            {
+                if (port & 0x01)
+                    vdp->writeControl(value);   // 81, 83, 85 ... 9F
+                else
+                    vdp->writeData(value);      // 80, 82, 84 ... 9E
+            }
+            return;
+
+        case 0xA0:
+            // PSG write range: A0-BF
+            if (psg)
+                psg->write(value);
             return;
 
         case 0xC0:
             // Controller keypad mode select
-            controller1->setControllerMode(ControllerMode::Keypad);
-            controller2->setControllerMode(ControllerMode::Keypad);
+            if (controller1)
+                controller1->setControllerMode(ControllerMode::Keypad);
+
+            if (controller2)
+                controller2->setControllerMode(ControllerMode::Keypad);
+
             return;
 
         case 0xE0:
-            // PSG write + controller joystick mode select
-            psg->write(value);
+            // Controller joystick mode select
+            if (controller1)
+                controller1->setControllerMode(ControllerMode::Joystick);
 
-            controller1->setControllerMode(ControllerMode::Joystick);
-            controller2->setControllerMode(ControllerMode::Joystick);
+            if (controller2)
+                controller2->setControllerMode(ControllerMode::Joystick);
+
             return;
 
         default:
