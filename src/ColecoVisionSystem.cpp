@@ -19,6 +19,7 @@ ColecoVisionSystem::ColecoVisionSystem()
     mem = std::make_unique<Memory>();
     psg = std::make_unique<PSG>();
     vdp = std::make_unique<VDP>();
+    videoOutput = std::make_unique<VideoOutput>();
 
     wireUp();
 }
@@ -33,6 +34,8 @@ void ColecoVisionSystem::reset()
     mem->reset();
     cart->reset();
     cpu->reset();
+    vdp->reset();
+    psg->reset();
 }
 
 void ColecoVisionSystem::run()
@@ -49,10 +52,39 @@ void ColecoVisionSystem::run()
 
     reset();
 
-    // Temporary test loop
-    for (int i = 0; i < 2000; ++i)
+    bool running = true;
+
+    while (running)
     {
-        cpu->step();
+        SDL_Event event;
+
+        while (SDL_PollEvent(&event))
+        {
+            if (event.type == SDL_EVENT_QUIT)
+            {
+                running = false;
+            }
+
+            // inputManager->handleEvent(event);
+        }
+
+        int frameCycles = 0;
+
+        while (frameCycles < CYCLES_PER_FRAME)
+        {
+            frameCycles += cpu->step();
+
+            // vdp->tick(cpuCycles);
+            // psg->tick(cpuCycles);
+        }
+
+        videoOutput->clear();
+
+        // vdp->renderFrame(*videoOutput);
+
+        videoOutput->present();
+
+        SDL_Delay(16);
     }
 }
 

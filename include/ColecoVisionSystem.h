@@ -17,7 +17,9 @@
 #include "CPU.h"
 #include "InputManager.h"
 #include "Memory.h"
+#include "SDL3/SDL.h"
 #include "VDP.h"
+#include "VideoOutput.h"
 
 class ColecoVisionSystem
 {
@@ -46,6 +48,11 @@ class ColecoVisionSystem
         std::unique_ptr<Memory> mem;
         std::unique_ptr<PSG> psg;
         std::unique_ptr<VDP> vdp;
+        std::unique_ptr<VideoOutput> videoOutput;
+
+        static constexpr int CPU_CLOCK_HZ = 3579545;
+        static constexpr int FPS = 60;
+        static constexpr int CYCLES_PER_FRAME = CPU_CLOCK_HZ / FPS;
 
         std::string biosPath;
 
