@@ -8,6 +8,7 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <functional>
@@ -313,10 +314,14 @@ class CPU
         // Opcode helpers
         uint8_t inc8(uint8_t value);
         uint8_t dec8(uint8_t value);
+        void andA(uint8_t value);
         void orA(uint8_t value);
         void addA(uint8_t value);
+        void adcA(uint8_t value);
         void addHL(uint16_t value);
+        void subA(uint8_t value);
         void sbcA(uint8_t value);
+        void xorA(uint8_t value);
 
         inline uint16_t getBC() const { return static_cast<uint16_t>((B << 8) | C); }
         inline uint16_t getDE() const { return static_cast<uint16_t>((D << 8) | E); }
@@ -335,13 +340,21 @@ class CPU
 
         int unimplementedOpcode(uint8_t opcode, uint16_t pc);
 
-        int opXORA();
+        int opANDImm();
         int opORImm();
         int opADDImm();
+        int opADCImm();
+        int opSUBImm();
 
-        int opCALLImm16();
         int opRET();
         int opRETZ();
+        int opRETNZ();
+        int opRETNC();
+        int opRETC();
+
+        int opCALLImm16();
+        int opCALLNZImm16();
+        int opCALLZImm16();
 
         int opPUSHBC();
         int opPUSHDE();
@@ -355,6 +368,8 @@ class CPU
 
         int opCPImm();
 
+        int opEXAFAFShadow();
+        int opEXSPHL();
         int opEXDEHL();
 
         inline int opNOP() { return 4;}
@@ -397,6 +412,11 @@ class CPU
         int opLDEImm();
         int opLDHImm();
         int opLDLImm();
+        int opLDHLAddrImm();
+        int opLDAddrBCFromA();
+        int opLDAFromAddrBC();
+        int opLDAddrDEFromA();
+        int opLDAFromAddrDE();
 
         int opLDAddrImm16FromA();
         int opLDAFromAddrImm16();
@@ -410,6 +430,9 @@ class CPU
         int opJPImm16();
         int opJPHL();
         int opJPMImm16();
+        int opJPZImm16();
+        int opJPNCImm16();
+        int opJPCImm16();
 
         int opOUTImmA();
         int opINAImm();
@@ -421,8 +444,13 @@ class CPU
         int opJRZ();
         int opDJNZ();
         int opJR();
+        int opJRNC();
+        int opJRC();
 
+        int opCPL();
         int opRRA();
+
+        int opRST08();
 
         int executeCB();
         int executeED();
