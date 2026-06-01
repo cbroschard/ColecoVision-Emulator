@@ -737,6 +737,7 @@ void CPU::initializeOpcodeTable()
 
     // Exchange
     opcodeTable[0x08] = [this]() { return opEXAFAFShadow(); }; // EX AF,AF
+    opcodeTable[0xD9] = [this]() { return opEXX(); };   // EXX
     opcodeTable[0xE3] = [this]() { return opEXSPHL(); }; // EX (SP),HL
     opcodeTable[0xEB] = [this]() { return opEXDEHL(); }; // EX DE,HL
 
@@ -784,6 +785,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0xD2] = [this]() { return opJPNCImm16(); }; // JP NC,nn
     opcodeTable[0xDA] = [this]() { return opJPCImm16(); };  // JP C,nn
     opcodeTable[0xE9] = [this]() { return opJPHL(); }; // JP (HL)
+    opcodeTable[0xF2] = [this]() { return opJPPImm16(); };  // JP P,nn
     opcodeTable[0xFA] = [this]() { return opJPMImm16(); };   // JP M,nn
 
     // I/O
@@ -835,11 +837,22 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x38] = [this]() { return opJRC(); };  // JR C,e
 
     // Rotate / accumulator
+    opcodeTable[0x07] = [this]() { return opRLCA(); }; // RLCA
+    opcodeTable[0x0F] = [this]() { return opRRCA(); }; // RRCA
     opcodeTable[0x1F] = [this]() { return opRRA(); }; // RRA
+    opcodeTable[0x17] = [this]() { return opRLA(); }; // RLA
     opcodeTable[0x2F] = [this]() { return opCPL(); }; // CPL
+    opcodeTable[0x37] = [this]() { return opSCF(); };  // SCF
 
     // RST
-    opcodeTable[0xCF] = [this]() { return opRST08(); }; // RST $08
+    opcodeTable[0xC7] = [this]() { return opRST(0x0000); }; // RST $00
+    opcodeTable[0xCF] = [this]() { return opRST(0x0008); }; // RST $08
+    opcodeTable[0xD7] = [this]() { return opRST(0x0010); }; // RST $10
+    opcodeTable[0xDF] = [this]() { return opRST(0x0018); }; // RST $18
+    opcodeTable[0xE7] = [this]() { return opRST(0x0020); }; // RST $20
+    opcodeTable[0xEF] = [this]() { return opRST(0x0028); }; // RST $28
+    opcodeTable[0xF7] = [this]() { return opRST(0x0030); }; // RST $30
+    opcodeTable[0xFF] = [this]() { return opRST(0x0038); }; // RST $38
 }
 
 int CPU::unimplementedOpcode(uint8_t opcode, uint16_t pc)
@@ -859,6 +872,80 @@ int CPU::unimplementedOpcode(uint8_t opcode, uint16_t pc)
     halted = true;
 
     return 4;
+}
+
+int CPU::opRRD()
+{
+    const uint16_t address = getHL();
+
+    const uint8_t memValue = read8(address);
+
+    const uint8_t aHigh = static_cast<uint8_t>(A & 0xF0);
+    const uint8_t aLow  = static_cast<uint8_t>(A & 0x0F);
+
+    const uint8_t memHigh = static_cast<uint8_t>((memValue >> 4) & 0x0F);
+    const uint8_t memLow  = static_cast<uint8_t>(memValue & 0x0F);
+
+    const uint8_t newMem = static_cast<uint8_t>((aLow << 4) | memHigh);
+    const uint8_t newA   = static_cast<uint8_t>(aHigh | memLow);
+
+    write8(address, newMem);
+    A = newA;
+
+    const uint8_t oldCarry = F & FLAG_C;
+
+    F = oldCarry;
+
+    if (A & 0x80)
+        F |= FLAG_S;
+
+    if (A == 0)
+        F |= FLAG_Z;
+
+    if (parityEven(A))
+        F |= FLAG_PV;
+
+    F |= A & (FLAG_Y | FLAG_X);
+
+    // H and N are reset by leaving them cleared.
+
+    return 18;
+}
+
+int CPU::opRLD()
+{
+    const uint16_t address = getHL();
+
+    const uint8_t memValue = read8(address);
+
+    const uint8_t aHigh = static_cast<uint8_t>(A & 0xF0);
+    const uint8_t aLow  = static_cast<uint8_t>(A & 0x0F);
+
+    const uint8_t memHigh = static_cast<uint8_t>((memValue >> 4) & 0x0F);
+    const uint8_t memLow  = static_cast<uint8_t>(memValue & 0x0F);
+
+    const uint8_t newMem = static_cast<uint8_t>((memLow << 4) | aLow);
+    const uint8_t newA   = static_cast<uint8_t>(aHigh | memHigh);
+
+    write8(address, newMem);
+    A = newA;
+
+    const uint8_t oldCarry = F & FLAG_C;
+
+    F = oldCarry;
+
+    if (A & 0x80)
+        F |= FLAG_S;
+
+    if (A == 0)
+        F |= FLAG_Z;
+
+    if (parityEven(A))
+        F |= FLAG_PV;
+
+    F |= A & (FLAG_Y | FLAG_X);
+
+    return 18;
 }
 
 int CPU::opANDImm()
@@ -1056,6 +1143,20 @@ int CPU::opEXAFAFShadow()
 {
     std::swap(A, A_);
     std::swap(F, F_);
+
+    return 4;
+}
+
+int CPU::opEXX()
+{
+    std::swap(B, B_);
+    std::swap(C, C_);
+
+    std::swap(D, D_);
+    std::swap(E, E_);
+
+    std::swap(H, H_);
+    std::swap(L, L_);
 
     return 4;
 }
@@ -1388,6 +1489,18 @@ int CPU::opJPImm16()
     return 10;
 }
 
+int CPU::opJPPImm16()
+{
+    const uint16_t address = fetch16();
+
+    if ((F & FLAG_S) == 0)
+    {
+        PC = address;
+    }
+
+    return 10;
+}
+
 int CPU::opJPHL()
 {
     PC = getHL();
@@ -1568,6 +1681,21 @@ int CPU::opCPL()
     return 4;
 }
 
+int CPU::opSCF()
+{
+    // SCF preserves S, Z, and P/V.
+    // Sets C.
+    // Clears H and N.
+    F &= static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_PV);
+
+    // Undocumented flags copy from A bits 5 and 3.
+    F |= A & (FLAG_Y | FLAG_X);
+
+    F |= FLAG_C;
+
+    return 4;
+}
+
 int CPU::opRRA()
 {
     const bool oldCarry = (F & FLAG_C) != 0;
@@ -1586,10 +1714,67 @@ int CPU::opRRA()
     return 4;
 }
 
-int CPU::opRST08()
+int CPU::opRRCA()
+{
+    const bool carry = (A & 0x01) != 0;
+
+    A = static_cast<uint8_t>((A >> 1) | (carry ? 0x80 : 0x00));
+
+    // RRCA preserves S, Z, and P/V.
+    // Clears H and N. Updates C.
+    F &= static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_PV);
+
+    // Undocumented flags copy from new A.
+    F |= A & (FLAG_Y | FLAG_X);
+
+    if (carry)
+        F |= FLAG_C;
+
+    return 4;
+}
+
+int CPU::opRLA()
+{
+    const bool oldCarry = (F & FLAG_C) != 0;
+    const bool newCarry = (A & 0x80) != 0;
+
+    A = static_cast<uint8_t>((A << 1) | (oldCarry ? 0x01 : 0x00));
+
+    // RLA preserves S, Z, and P/V.
+    // Clears H and N. Updates C.
+    F &= static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_PV);
+
+    F |= A & (FLAG_Y | FLAG_X);
+
+    if (newCarry)
+        F |= FLAG_C;
+
+    return 4;
+}
+
+int CPU::opRLCA()
+{
+    const bool carry = (A & 0x80) != 0;
+
+    A = static_cast<uint8_t>((A << 1) | (carry ? 0x01 : 0x00));
+
+    // RLCA preserves S, Z, and P/V.
+    // Clears H and N. Updates C.
+    F &= static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_PV);
+
+    // Undocumented flags copy from new A.
+    F |= A & (FLAG_Y | FLAG_X);
+
+    if (carry)
+        F |= FLAG_C;
+
+    return 4;
+}
+
+int CPU::opRST(uint16_t address)
 {
     push16(PC);
-    PC = 0x0008;
+    PC = address;
     return 11;
 }
 
@@ -2223,6 +2408,11 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x67: // RRD
+        {
+            return opRRD();
+        }
+
         case 0x6B: // LD HL,(nn)
         {
             const uint16_t address = fetch16();
@@ -2233,6 +2423,11 @@ int CPU::executeED()
             setHL(static_cast<uint16_t>(lo | (hi << 8)));
 
             return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x6F: // RLD
+        {
+            return opRLD();
         }
 
         case 0x73: // LD (nn),SP
@@ -2255,6 +2450,40 @@ int CPU::executeED()
             SP = static_cast<uint16_t>(lo | (hi << 8));
 
             return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xA2: // INI
+        {
+            const uint16_t hl = getHL();
+
+            // IN (C)
+            const uint8_t value = readIO(C);
+
+            // (HL) = input value
+            write8(hl, value);
+
+            // HL++
+            setHL(static_cast<uint16_t>(hl + 1));
+
+            // B--
+            B = static_cast<uint8_t>(B - 1);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (B == 0)
+                F |= FLAG_Z;
+
+            if (value & 0x80)
+                F |= FLAG_N;
+
+            // Useful approximation for undocumented flags.f
+            if (B & 0x80) F |= FLAG_S;
+            if (B & 0x20) F |= FLAG_Y;
+            if (B & 0x08) F |= FLAG_X;
+
+            return ED_CYCLE_COUNTS[opcode]; // 16
         }
 
         case 0xA3: // OUTI
@@ -2314,6 +2543,47 @@ int CPU::executeED()
             {
                 F |= FLAG_PV;
                 PC = static_cast<uint16_t>(PC - 2);
+                return 21;
+            }
+
+            return 16;
+        }
+
+        case 0xB8: // LDDR
+        {
+            const uint16_t hl = getHL();
+            const uint16_t de = getDE();
+            const uint16_t bc = getBC();
+
+            const uint8_t value = read8(hl);
+
+            write8(de, value);
+
+            setHL(static_cast<uint16_t>(hl - 1));
+            setDE(static_cast<uint16_t>(de - 1));
+            setBC(static_cast<uint16_t>(bc - 1));
+
+            const uint16_t newBC = static_cast<uint16_t>(bc - 1);
+            const uint8_t oldCarry = F & FLAG_C;
+            const uint8_t sum = static_cast<uint8_t>(A + value);
+
+            F = oldCarry;
+
+            // H and N are reset for LDDR.
+            // P/V set while BC is not zero.
+            if (sum & 0x08)
+                F |= FLAG_X;
+
+            if (sum & 0x20)
+                F |= FLAG_Y;
+
+            if (newBC != 0)
+            {
+                F |= FLAG_PV;
+
+                // Repeat this ED B8 instruction.
+                PC = static_cast<uint16_t>(PC - 2);
+
                 return 21;
             }
 

@@ -340,6 +340,9 @@ class CPU
 
         int unimplementedOpcode(uint8_t opcode, uint16_t pc);
 
+        int opRRD();
+        int opRLD();
+
         int opANDImm();
         int opORImm();
         int opADDImm();
@@ -369,6 +372,7 @@ class CPU
         int opCPImm();
 
         int opEXAFAFShadow();
+        int opEXX();
         int opEXSPHL();
         int opEXDEHL();
 
@@ -428,6 +432,7 @@ class CPU
 
         int opJPNZImm16();
         int opJPImm16();
+        int opJPPImm16();
         int opJPHL();
         int opJPMImm16();
         int opJPZImm16();
@@ -449,8 +454,12 @@ class CPU
 
         int opCPL();
         int opRRA();
+        int opRRCA();
+        int opRLCA();
+        int opRLA();
+        int opSCF();
 
-        int opRST08();
+        int opRST(uint16_t address);
 
         int executeCB();
         int executeED();
