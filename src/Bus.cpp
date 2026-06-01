@@ -37,9 +37,11 @@ void Bus::writeMemory(uint16_t address, uint8_t value)
 
 uint8_t Bus::readIO(uint8_t port)
 {
+    #ifdef Debug
     std::cout << "IN  port $"
               << std::hex << std::uppercase << static_cast<int>(port)
               << std::dec << std::endl;
+    #endif
 
     // VDP read ports: BE = data, BF = status
     if ((port & 0xFE) == 0xBE)
@@ -68,10 +70,12 @@ uint8_t Bus::readIO(uint8_t port)
 
 void Bus::writeIO(uint8_t port, uint8_t value)
 {
+    #ifdef Debug
     std::cout << "OUT port $"
               << std::hex << std::uppercase << static_cast<int>(port)
               << " value $" << static_cast<int>(value)
               << std::dec << std::endl;
+    #endif
 
     // VDP write ports: BE = data, BF = control
     if ((port & 0xFE) == 0xBE)
