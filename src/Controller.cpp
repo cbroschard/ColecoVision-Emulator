@@ -9,10 +9,22 @@
 
 Controller::Controller()
 {
-    //ctor
+
 }
 
-Controller::~Controller()
+Controller::~Controller() = default;
+
+uint8_t Controller::read() const
 {
-    //dtor
+    return 0xFF;
+}
+
+void Controller::setButton(ControllerButton button, bool pressed)
+{
+    buttons[static_cast<size_t>(button)] = pressed;
+}
+
+bool Controller::isButtonPressed(ControllerButton button) const
+{
+    return buttons[static_cast<size_t>(button)];
 }
