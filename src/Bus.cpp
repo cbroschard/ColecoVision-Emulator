@@ -17,10 +17,7 @@ Bus::Bus() :
 
 }
 
-Bus::~Bus()
-{
-
-}
+Bus::~Bus() = default;
 
 uint8_t Bus::readMemory(uint16_t address)
 {
