@@ -26,6 +26,7 @@ AudioOutput::AudioOutput() :
 AudioOutput::~AudioOutput()
 {
     stopAudio();
+    SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
 bool AudioOutput::playAudio()
