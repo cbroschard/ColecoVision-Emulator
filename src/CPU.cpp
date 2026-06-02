@@ -2311,6 +2311,12 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x46: // IM 0
+        {
+            IM = 0;
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x4B: // LD BC,(nn)
         {
             const uint16_t address = fetch16();
@@ -2366,6 +2372,12 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x56: // IM 1
+        {
+            IM = 1;
+            return ED_CYCLE_COUNTS[opcode]; // 8
+        }
+
         case 0x5B: // LD DE,(nn)
         {
             const uint16_t address = fetch16();
@@ -2375,6 +2387,12 @@ int CPU::executeED()
 
             setDE(static_cast<uint16_t>(lo | (hi << 8)));
 
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x5E: // IM 2
+        {
+            IM = 2;
             return ED_CYCLE_COUNTS[opcode];
         }
 
