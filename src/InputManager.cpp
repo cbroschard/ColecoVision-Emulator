@@ -72,57 +72,46 @@ void InputManager::handleEvent(const SDL_Event& event)
 
         // Controller 1 keypad
         case SDLK_0:
-        case SDLK_KP_0:
             if (controller1) controller1->setButton(ControllerButton::Key0, pressed);
             break;
 
         case SDLK_1:
-        case SDLK_KP_1:
             if (controller1) controller1->setButton(ControllerButton::Key1, pressed);
             break;
 
         case SDLK_2:
-        case SDLK_KP_2:
             if (controller1) controller1->setButton(ControllerButton::Key2, pressed);
             break;
 
         case SDLK_3:
-        case SDLK_KP_3:
             if (controller1) controller1->setButton(ControllerButton::Key3, pressed);
             break;
 
         case SDLK_4:
-        case SDLK_KP_4:
             if (controller1) controller1->setButton(ControllerButton::Key4, pressed);
             break;
 
         case SDLK_5:
-        case SDLK_KP_5:
             if (controller1) controller1->setButton(ControllerButton::Key5, pressed);
             break;
 
         case SDLK_6:
-        case SDLK_KP_6:
             if (controller1) controller1->setButton(ControllerButton::Key6, pressed);
             break;
 
         case SDLK_7:
-        case SDLK_KP_7:
             if (controller1) controller1->setButton(ControllerButton::Key7, pressed);
             break;
 
         case SDLK_8:
-        case SDLK_KP_8:
             if (controller1) controller1->setButton(ControllerButton::Key8, pressed);
             break;
 
         case SDLK_9:
-        case SDLK_KP_9:
             if (controller1) controller1->setButton(ControllerButton::Key9, pressed);
             break;
 
         case SDLK_Z:
-        case SDLK_KP_MULTIPLY:
             if (controller1) controller1->setButton(ControllerButton::KeyStar, pressed);
             break;
 
@@ -155,7 +144,56 @@ void InputManager::handleEvent(const SDL_Event& event)
             if (controller2) controller2->setButton(ControllerButton::FireRight, pressed);
             break;
 
-        default:
+        // Controller 2 Keypad
+        case SDLK_KP_0:
+            if (controller2) controller2->setButton(ControllerButton::Key0, pressed);
+            break;
+
+        case SDLK_KP_1:
+            if (controller2) controller2->setButton(ControllerButton::Key1, pressed);
+            break;
+
+        case SDLK_KP_2:
+            if (controller2) controller2->setButton(ControllerButton::Key2, pressed);
+            break;
+
+        case SDLK_KP_3:
+            if (controller2) controller2->setButton(ControllerButton::Key3, pressed);
+            break;
+
+        case SDLK_KP_4:
+            if (controller2) controller2->setButton(ControllerButton::Key4, pressed);
+            break;
+
+        case SDLK_KP_5:
+            if (controller2) controller2->setButton(ControllerButton::Key5, pressed);
+            break;
+
+        case SDLK_KP_6:
+            if (controller2) controller2->setButton(ControllerButton::Key6, pressed);
+            break;
+
+        case SDLK_KP_7:
+            if (controller2) controller2->setButton(ControllerButton::Key7, pressed);
+            break;
+
+        case SDLK_KP_8:
+            if (controller2) controller2->setButton(ControllerButton::Key8, pressed);
+            break;
+
+        case SDLK_KP_9:
+            if (controller2) controller2->setButton(ControllerButton::Key9, pressed);
+            break;
+
+        case SDLK_KP_MULTIPLY:
+            if (controller2) controller2->setButton(ControllerButton::KeyStar, pressed);
+            break;
+
+        case SDLK_KP_MINUS:
+            if (controller2) controller2->setButton(ControllerButton::KeyPound, pressed);
+            break;
+
+         default:
             break;
     }
 }
