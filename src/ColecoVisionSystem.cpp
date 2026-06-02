@@ -19,6 +19,7 @@ ColecoVisionSystem::ColecoVisionSystem()
     inputManager = std::make_unique<InputManager>();
     irqLine = std::make_unique<IRQLine>();
     memory = std::make_unique<Memory>();
+    mlMonitor = std::make_unique<MLMonitor>();
     monbackend = std::make_unique<MLMonitorBackend>();
     monitorController = std::make_unique<MonitorController>();
     psg = std::make_unique<PSG>();
@@ -81,7 +82,19 @@ void ColecoVisionSystem::run()
             if (event.type == SDL_EVENT_QUIT)
             {
                 running = false;
+                continue;
             }
+
+            // F12 toggles the ML monitor window.
+            if (event.type == SDL_EVENT_KEY_DOWN && event.key.key == SDLK_F12)
+            {
+                monitorController->toggleMonitor();
+                continue;
+            }
+
+            // Let monitor receive typing, close-window events, etc.
+            if (monitorController->handleEvent(event))
+                continue;
 
             inputManager->handleEvent(event);
         }
@@ -113,6 +126,8 @@ void ColecoVisionSystem::run()
         vdp->renderFrame(*videoOutput);
 
         videoOutput->present();
+
+        monitorController->tick();
 
         SDL_Delay(16);
     }
@@ -158,4 +173,6 @@ void ColecoVisionSystem::wireUp()
     monbackend->attachMemoryInstance(memory.get());
     monbackend->attachPSGInstance(psg.get());
     monbackend->attachVDPInstance(vdp.get());
+
+    monitorController->attachMonitorInstance(mlMonitor.get());
 }

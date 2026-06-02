@@ -58,6 +58,14 @@ std::string MLMonitor::getPrompt() const
     return "> ";
 }
 
+std::vector<std::string> MLMonitor::drainAsyncLines()
+{
+    std::lock_guard<std::mutex> lock(asyncMutex);
+    std::vector<std::string> out;
+    out.swap(asyncLines);
+    return out;
+}
+
 void MLMonitor::handleCommand(const std::string& line)
 {
     std::istringstream iss(line);

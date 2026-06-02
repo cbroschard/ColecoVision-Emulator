@@ -16,6 +16,7 @@
 #include "Cartridge.h"
 #include "Controller.h"
 #include "CPU.h"
+#include "Debug/MLMonitor.h"
 #include "Debug/MlMonitorBackend.h"
 #include "InputManager.h"
 #include "IRQLine.h"
@@ -55,6 +56,7 @@ class ColecoVisionSystem
         std::unique_ptr<InputManager> inputManager;
         std::unique_ptr<IRQLine> irqLine;
         std::unique_ptr<Memory> memory;
+        std::unique_ptr<MLMonitor> mlMonitor;
         std::unique_ptr<MLMonitorBackend> monbackend;
         std::unique_ptr<MonitorController> monitorController;
         std::unique_ptr<PSG> psg;

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +36,8 @@ class MLMonitor
         void enterMonitor();
         std::string getPrompt() const;
 
+        std::vector<std::string> drainAsyncLines();
+
     protected:
 
     private:
@@ -42,6 +45,10 @@ class MLMonitor
         MLMonitorBackend* mlmonitorBackend;
 
         bool running;
+
+        // std::cout queue
+        std::mutex asyncMutex;
+        std::vector<std::string> asyncLines;
 
         // Console output to file
         std::ofstream outputFile;
