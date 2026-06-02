@@ -50,10 +50,11 @@ uint8_t Bus::readIO(uint8_t port)
     }
 
     // Controller read range: $E0-$FF.
-    // $FC = controller 1, $FF = controller 2.
+    // Even mirrored ports are controller 1.
+    // Ports with bit 1 set are controller 2.
     if ((port & 0xE0) == 0xE0)
     {
-        if ((port & 0x03) == 0x03)
+        if (port & 0x02)
             return controller2 ? controller2->read() : 0xFF;
 
         return controller1 ? controller1->read() : 0xFF;
