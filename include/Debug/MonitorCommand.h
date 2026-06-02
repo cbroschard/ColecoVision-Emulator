@@ -8,6 +8,13 @@
 #ifndef MONITORCOMMAND_H
 #define MONITORCOMMAND_H
 
+#include <cstdint>
+#include <iomanip>
+#include <string>
+#include <vector>
+
+// Forward declarations
+class MLMonitor;
 
 class MonitorCommand
 {
@@ -15,7 +22,18 @@ class MonitorCommand
         MonitorCommand();
         virtual ~MonitorCommand();
 
+        virtual int order() const { return 100; }
+
+        virtual std::string name() const = 0;
+        virtual std::string category() const = 0;
+        virtual std::string shortHelp() const = 0;
+        virtual std::string help() const = 0;
+
+        virtual void execute(MLMonitor& mon, const std::vector<std::string>& args) = 0;
+
     protected:
+        uint16_t parseAddress(const std::string& s);
+        bool isHelp(const std::string& s) const;
 
     private:
 };
