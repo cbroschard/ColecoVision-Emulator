@@ -8,6 +8,9 @@
 #ifndef AUDIOOUTPUT_H
 #define AUDIOOUTPUT_H
 
+#include <algorithm>
+#include <vector>
+#include "PSG.h"
 #include "SDL3/SDL.h"
 
 class AudioOutput
@@ -16,9 +19,36 @@ class AudioOutput
         AudioOutput();
         virtual ~AudioOutput();
 
+        inline void attachPSGInstance(PSG* psg) { this->psg = psg; }
+
+        inline int getBlockSamples() const { return BUFFER_SIZE; }
+        inline int getSampleRate() const { return obtainedSpec.freq; }
+
+        bool playAudio();
+        void pauseAudio();
+        void stopAudio();
+        void resumeAudio();
+
+        void queueSamples();
+
     protected:
 
     private:
+        // Non-owning pointers
+        PSG* psg;
+
+        // Audio constants
+        static const int SAMPLE_RATE = 44100;
+        static const int CHANNELS = 2;
+        static const int BUFFER_SIZE = 2048;
+        static constexpr float MASTER_VOLUME = 0.25f;
+
+        // Audio processing
+        SDL_AudioSpec desired{};
+        SDL_AudioSpec obtainedSpec{};
+        SDL_AudioStream* stream;
+
+        bool initialized;
 };
 
 #endif // AUDIOOUTPUT_H

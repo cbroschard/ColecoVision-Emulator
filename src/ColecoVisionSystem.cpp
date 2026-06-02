@@ -10,6 +10,7 @@
 
 ColecoVisionSystem::ColecoVisionSystem()
 {
+    audioOutput = std::make_unique<AudioOutput>();
     bus = std::make_unique<Bus>();
     cart = std::make_unique<Cartridge>();
     controller1 = std::make_unique<Controller>();
@@ -64,6 +65,11 @@ void ColecoVisionSystem::run()
 
     bool running = true;
 
+    if (!audioOutput->playAudio())
+    {
+        throw std::runtime_error("Failed to start audio.");
+    }
+
     while (running)
     {
         SDL_Event event;
@@ -100,6 +106,8 @@ void ColecoVisionSystem::run()
 
         videoOutput->clear();
 
+        audioOutput->queueSamples();
+
         vdp->renderFrame(*videoOutput);
 
         videoOutput->present();
@@ -125,6 +133,8 @@ bool ColecoVisionSystem::loadCartridge(const std::string& path)
 
 void ColecoVisionSystem::wireUp()
 {
+    audioOutput->attachPSGInstance(psg.get());
+
     bus->attachController1Instance(controller1.get());
     bus->attachController2Instance(controller2.get());
     bus->attachMemoryInstance(mem.get());
