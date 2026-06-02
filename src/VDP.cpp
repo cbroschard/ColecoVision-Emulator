@@ -8,6 +8,7 @@
 #include "VDP.h"
 
 VDP::VDP() :
+    mode(VDPMode::GraphicsI),
     address(0),
     readBuffer(0),
     statusReg(0),
@@ -33,6 +34,7 @@ void VDP::reset()
     cycleCounter        = 0;
     scanline            = 0;
     irqAsserted         = false;
+    mode                = VDPMode::GraphicsI;
 
     vram.fill(0x00);
     regs.fill(0x00);
@@ -126,9 +128,11 @@ void VDP::writeControl(uint8_t value)
         case 0x80:
             // Register write
             {
-                uint8_t reg = second & 0x07;
+                // TMS9918 has registers 0-7.
+                const uint8_t reg = second & 0x07;
                 regs[reg] = first;
                 updateModeFromRegisters();
+                break;
             }
             break;
 
@@ -153,7 +157,31 @@ void VDP::writeData(uint8_t value)
 
 void VDP::updateModeFromRegisters()
 {
+    const bool m1 = (regs[1] & 0x10) != 0;
+    const bool m2 = (regs[1] & 0x08) != 0;
+    const bool m3 = (regs[0] & 0x02) != 0;
 
+    if (!m1 && !m2 && !m3)
+    {
+        mode = VDPMode::GraphicsI;
+    }
+    else if (!m1 && !m2 && m3)
+    {
+        mode = VDPMode::GraphicsII;
+    }
+    else if (m1 && !m2 && !m3)
+    {
+        mode = VDPMode::Text;
+    }
+    else if (!m1 && m2 && !m3)
+    {
+        mode = VDPMode::Multicolor;
+    }
+    else
+    {
+        // Unsupported mixed modes for now.
+        mode = VDPMode::GraphicsI;
+    }
 }
 
 void VDP::renderFrame(VideoOutput& output)

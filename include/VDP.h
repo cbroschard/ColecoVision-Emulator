@@ -12,6 +12,14 @@
 #include <cstdint>
 #include "VideoOutput.h"
 
+enum class VDPMode
+{
+    GraphicsI,
+    GraphicsII,
+    Text,
+    Multicolor
+};
+
 class VDP
 {
     public:
@@ -32,11 +40,16 @@ class VDP
 
         inline bool isIRQAsserted() const { return irqAsserted; }
 
+        // ML Monitor
+        inline VDPMode getMode() const { return mode; }
+
     protected:
 
     private:
         std::array<uint8_t, 0x4000> vram{};     // 16K VRAM
         std::array<uint8_t, 8> regs{};          // VDP registers 0-7
+
+        VDPMode mode;
 
         static constexpr int CPU_CYCLES_PER_SCANLINE = 228;
         static constexpr int SCANLINES_PER_FRAME = 262;
