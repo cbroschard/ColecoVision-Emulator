@@ -12,7 +12,4 @@ MLMonitorBackend::MLMonitorBackend()
 
 }
 
-MLMonitorBackend::~MLMonitorBackend()
-{
-
-}
+MLMonitorBackend::~MLMonitorBackend() = default;
