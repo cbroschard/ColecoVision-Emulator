@@ -14,7 +14,8 @@ VDP::VDP() :
     controlLatch(false),
     controlFirstByte(0),
     cycleCounter(0),
-    scanline(0)
+    scanline(0),
+    irqAsserted(false)
 {
     vram.fill(0x00);
     regs.fill(0x00);
@@ -31,6 +32,7 @@ void VDP::reset()
     controlFirstByte    = 0;
     cycleCounter        = 0;
     scanline            = 0;
+    irqAsserted         = false;
 
     vram.fill(0x00);
     regs.fill(0x00);
@@ -48,6 +50,11 @@ void VDP::tick(int cpuCycles)
         if (scanline == VBLANK_START_LINE)
         {
             statusReg |= 0x80; // VBlank flag
+
+            if (regs[1] & 0x20)
+            {
+                irqAsserted = true;
+            }
         }
 
         if (scanline >= SCANLINES_PER_FRAME)
@@ -61,10 +68,8 @@ uint8_t VDP::readStatus()
 {
     uint8_t result = statusReg;
 
-    // Clear VBlank flag / interrupt flag.
     statusReg &= ~0x80;
-
-    // Reading status also resets the control latch.
+    irqAsserted = false;
     controlLatch = false;
 
     return result;

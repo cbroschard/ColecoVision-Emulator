@@ -22,6 +22,9 @@ class CPU
 
         inline void attachBusInstance(Bus* bus) { this->bus = bus; }
 
+        inline void setIRQ(bool active) { irqPending = active; }
+        inline void triggerNMI() { nmiPending = true; }
+
         void reset();
 
         int step();
@@ -243,10 +246,10 @@ class CPU
                 F &= static_cast<uint8_t>(~flag);
         }
 
-        inline bool getFlag(uint8_t flag) const
-        {
-            return (F & flag) != 0;
-        }
+        inline bool getFlag(uint8_t flag) const { return (F & flag) != 0; }
+
+        int serviceIRQ();
+        int serviceNMI();
 
         // Main registers
         uint8_t A;
@@ -339,6 +342,9 @@ class CPU
         void initializeOpcodeTable();
 
         int unimplementedOpcode(uint8_t opcode, uint16_t pc);
+
+        int opDI();
+        int opEI();
 
         int opRRD();
         int opRLD();

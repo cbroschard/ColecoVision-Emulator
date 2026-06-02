@@ -30,6 +30,8 @@ class VDP
 
         void renderFrame(VideoOutput& output);
 
+        inline bool isIRQAsserted() const { return irqAsserted; }
+
     protected:
 
     private:
@@ -49,6 +51,8 @@ class VDP
 
         int cycleCounter;
         int scanline;
+
+        bool irqAsserted;
 
         void updateModeFromRegisters();
 };

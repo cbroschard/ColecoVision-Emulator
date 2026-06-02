@@ -88,6 +88,13 @@ void ColecoVisionSystem::run()
 
             vdp->tick(cpuCycles);
 
+            if (vdp->isIRQAsserted())
+                irqLine->raiseIRQ(IRQSource::VDP);
+            else
+                irqLine->clearIRQ(IRQSource::VDP);
+
+            cpu->setIRQ(irqLine->isAsserted());
+
             // psg->tick(cpuCycles);
         }
 

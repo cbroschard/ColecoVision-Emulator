@@ -107,14 +107,41 @@ void CPU::reset()
 
 int CPU::step()
 {
+    // NMI has priority and ignores IFF1.
+    if (nmiPending)
+    {
+        const int usedCycles = serviceNMI();
+        cycles += usedCycles;
+        return usedCycles;
+    }
+
+    // Maskable IRQ only accepted when enabled.
+    if (irqPending && IFF1 && !eiDelay)
+    {
+        const int usedCycles = serviceIRQ();
+        cycles += usedCycles;
+        return usedCycles;
+    }
+
     if (halted)
     {
         cycles += 4;
         return 4;
     }
 
+    const bool wasEIDelayed = eiDelay;
+
     const uint8_t opcode = fetch8();
     const int usedCycles = opcodeTable[opcode]();
+
+    // If EI was pending before this instruction, enable interrupts now.
+    // But do not immediately enable during the EI instruction itself.
+    if (wasEIDelayed && opcode != 0xFB)
+    {
+        IFF1 = true;
+        IFF2 = true;
+        eiDelay = false;
+    }
 
     cycles += usedCycles;
 
@@ -140,6 +167,73 @@ uint16_t CPU::fetch16()
     uint8_t hi = fetch8();
 
     return static_cast<uint16_t>(lo | (hi << 8));
+}
+
+int CPU::serviceIRQ()
+{
+    // If CPU was halted, an interrupt wakes it.
+    halted = false;
+
+    // Maskable interrupt accepted: disable further maskable interrupts.
+    IFF1 = false;
+    IFF2 = false;
+
+    // Push current PC just like a CALL.
+    push16(PC);
+
+    switch (IM)
+    {
+        case 0:
+            // For now, treat IM 0 like IM 1.
+            // Real IM 0 executes an instruction supplied by the bus.
+            PC = 0x0038;
+            return 13;
+
+        case 1:
+            // IM 1 always jumps to $0038.
+            PC = 0x0038;
+            return 13;
+
+        case 2:
+        {
+            // IM 2 uses I register as high byte of vector table.
+            // The low byte normally comes from the interrupting device.
+            const uint16_t vectorAddress =
+                static_cast<uint16_t>((static_cast<uint16_t>(I) << 8) | 0xFF);
+
+            const uint8_t lo = read8(vectorAddress);
+            const uint8_t hi = read8(static_cast<uint16_t>(vectorAddress + 1));
+
+            PC = static_cast<uint16_t>(lo | (hi << 8));
+
+            return 19;
+        }
+
+        default:
+            PC = 0x0038;
+            return 13;
+    }
+}
+
+int CPU::serviceNMI()
+{
+    // NMI wakes HALT.
+    halted = false;
+
+    // Preserve old maskable interrupt enable state.
+    IFF2 = IFF1;
+
+    // Disable maskable interrupts.
+    IFF1 = false;
+
+    // NMI is edge-triggered, so clear pending after accepting.
+    nmiPending = false;
+
+    // Push current PC and jump to NMI vector.
+    push16(PC);
+    PC = 0x0066;
+
+    return 11;
 }
 
 uint8_t CPU::read8(uint16_t address) const
@@ -703,6 +797,10 @@ void CPU::initializeOpcodeTable()
         };
     }
 
+    // Interrupt control
+    opcodeTable[0xF3] = [this]() { return opDI(); }; // DI
+    opcodeTable[0xFB] = [this]() { return opEI(); }; // EI
+
     // ALU / logic
     opcodeTable[0xC6] = [this]() { return opADDImm(); };  // ADD A,n
     opcodeTable[0xCE] = [this]() { return opADCImm(); };  // ADC A,n
@@ -870,6 +968,23 @@ int CPU::unimplementedOpcode(uint8_t opcode, uint16_t pc)
         << std::endl;
 
     halted = true;
+
+    return 4;
+}
+
+int CPU::opDI()
+{
+    IFF1 = false;
+    IFF2 = false;
+    eiDelay = false;
+
+    return 4;
+}
+
+int CPU::opEI()
+{
+    // Interrupts become enabled after the next instruction.
+    eiDelay = true;
 
     return 4;
 }
