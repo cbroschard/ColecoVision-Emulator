@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include "AudioOutput.h"
 #include "Bus.h"
 #include "Cartridge.h"
 #include "Controller.h"
@@ -40,6 +41,7 @@ class ColecoVisionSystem
     protected:
 
     private:
+        std::unique_ptr<AudioOutput> audioOutput;
         std::unique_ptr<Bus> bus;
         std::unique_ptr<Cartridge> cart;
         std::unique_ptr<Controller> controller1;
