@@ -174,5 +174,7 @@ void ColecoVisionSystem::wireUp()
     monbackend->attachPSGInstance(psg.get());
     monbackend->attachVDPInstance(vdp.get());
 
+    mlMonitor->attachMLMonitorBackendInstance(monbackend.get());
+
     monitorController->attachMonitorInstance(mlMonitor.get());
 }
