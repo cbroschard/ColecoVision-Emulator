@@ -71,6 +71,9 @@ class VDP
         void renderGraphicsI(VideoOutput& output);
         void renderUnsupportedMode(VideoOutput& output);
 
+        // Sprite rendering
+        void renderSprites(VideoOutput& output);
+
         // Helpers
         inline uint8_t getBackdropColor() const { return regs[7] & 0x0F; }
         inline bool isDisplayEnabled() const { return (regs[1] & 0x40) != 0; }

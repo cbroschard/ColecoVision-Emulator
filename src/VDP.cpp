@@ -176,6 +176,9 @@ void VDP::renderFrame(VideoOutput& output)
             renderUnsupportedMode(output);
             break;
     }
+
+    // Sprites render after background
+    renderSprites(output);
 }
 
 void VDP::renderGraphicsI(VideoOutput& output)
@@ -231,6 +234,175 @@ void VDP::renderGraphicsI(VideoOutput& output)
 void VDP::renderUnsupportedMode(VideoOutput& output)
 {
     clearToBackdrop(output);
+}
+
+void VDP::renderSprites(VideoOutput& output)
+{
+    const uint16_t spriteAttributeBase =
+        static_cast<uint16_t>((regs[5] & 0x7F) << 7);
+
+    const uint16_t spritePatternBase =
+        static_cast<uint16_t>((regs[6] & 0x07) << 11);
+
+    const bool sprite16x16 = (regs[1] & 0x02) != 0;
+    const bool magnified   = (regs[1] & 0x01) != 0;
+
+    const int logicalSpriteSize = sprite16x16 ? 16 : 8;
+    const int scale = magnified ? 2 : 1;
+    const int visibleSpriteSize = logicalSpriteSize * scale;
+
+    // First find the active sprite count using the Y=208 terminator.
+    int spriteCount = 32;
+
+    for (int sprite = 0; sprite < 32; ++sprite)
+    {
+        const uint16_t attrAddr =
+            static_cast<uint16_t>(spriteAttributeBase + sprite * 4);
+
+        const uint8_t yRaw =
+            vram[(attrAddr + 0) & 0x3FFF];
+
+        if (yRaw == 208)
+        {
+            spriteCount = sprite;
+            break;
+        }
+    }
+
+    // Render scanline by scanline so we can enforce the TMS9918
+    // "first 4 sprites per scanline" rule.
+    for (int screenY = 0; screenY < 192; ++screenY)
+    {
+        int visibleSprites[4] = { -1, -1, -1, -1 };
+        int visibleCount = 0;
+
+        // Hardware considers sprites in ascending sprite number order.
+        for (int sprite = 0; sprite < spriteCount; ++sprite)
+        {
+            const uint16_t attrAddr =
+                static_cast<uint16_t>(spriteAttributeBase + sprite * 4);
+
+            const uint8_t yRaw =
+                vram[(attrAddr + 0) & 0x3FFF];
+
+            int spriteY = static_cast<int>(yRaw) + 1;
+
+            // TMS9918 vertical wrap.
+            if (spriteY >= 225)
+                spriteY -= 256;
+
+            if (screenY < spriteY || screenY >= spriteY + visibleSpriteSize)
+                continue;
+
+            visibleSprites[visibleCount++] = sprite;
+
+            // Only first 4 sprites on this scanline are displayed.
+            if (visibleCount >= 4)
+                break;
+        }
+
+        // Draw selected sprites in reverse order so lower sprite numbers
+        // end up on top.
+        for (int listIndex = visibleCount - 1; listIndex >= 0; --listIndex)
+        {
+            const int sprite = visibleSprites[listIndex];
+
+            if (sprite < 0)
+                continue;
+
+            const uint16_t attrAddr =
+                static_cast<uint16_t>(spriteAttributeBase + sprite * 4);
+
+            const uint8_t yRaw =
+                vram[(attrAddr + 0) & 0x3FFF];
+
+            const uint8_t xRaw =
+                vram[(attrAddr + 1) & 0x3FFF];
+
+            uint8_t patternIndex =
+                vram[(attrAddr + 2) & 0x3FFF];
+
+            const uint8_t colorByte =
+                vram[(attrAddr + 3) & 0x3FFF];
+
+            const uint8_t color =
+                static_cast<uint8_t>(colorByte & 0x0F);
+
+            if (color == 0)
+                continue;
+
+            if (sprite16x16)
+                patternIndex &= 0xFC;
+
+            int spriteX = static_cast<int>(xRaw);
+            int spriteY = static_cast<int>(yRaw) + 1;
+
+            if (colorByte & 0x80)
+                spriteX -= 32;
+
+            if (spriteY >= 225)
+                spriteY -= 256;
+
+            const int visibleRow = screenY - spriteY;
+            const int sy = visibleRow / scale;
+
+            if (sy < 0 || sy >= logicalSpriteSize)
+                continue;
+
+            for (int sx = 0; sx < logicalSpriteSize; ++sx)
+            {
+                int patternOffset = 0;
+
+                if (sprite16x16)
+                {
+                    const bool rightHalf  = sx >= 8;
+                    const bool bottomHalf = sy >= 8;
+
+                    // TMS9918 16x16 sprite pattern layout:
+                    // +0 = upper-left
+                    // +1 = lower-left
+                    // +2 = upper-right
+                    // +3 = lower-right
+                    if (bottomHalf)
+                        patternOffset += 1;
+
+                    if (rightHalf)
+                        patternOffset += 2;
+                }
+
+                const int patternRow = sy & 0x07;
+                const int patternCol = sx & 0x07;
+
+                const uint16_t patternAddr =
+                    static_cast<uint16_t>(
+                        spritePatternBase +
+                        static_cast<uint16_t>((patternIndex + patternOffset) * 8) +
+                        patternRow
+                    );
+
+                const uint8_t patternByte =
+                    vram[patternAddr & 0x3FFF];
+
+                const bool pixelOn =
+                    (patternByte & (0x80 >> patternCol)) != 0;
+
+                if (!pixelOn)
+                    continue;
+
+                const int baseX = spriteX + sx * scale;
+
+                for (int dx = 0; dx < scale; ++dx)
+                {
+                    const int x = baseX + dx;
+
+                    if (x < 0 || x >= 256)
+                        continue;
+
+                    output.setPixel(x, screenY, color);
+                }
+            }
+        }
+    }
 }
 
 void VDP::updateModeFromRegisters()
