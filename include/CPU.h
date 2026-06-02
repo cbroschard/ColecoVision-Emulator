@@ -360,6 +360,8 @@ class CPU
         int opRETNZ();
         int opRETNC();
         int opRETC();
+        int opRETP();
+        int opRETM();
 
         int opCALLImm16();
         int opCALLNZImm16();

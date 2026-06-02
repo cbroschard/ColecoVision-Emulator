@@ -814,6 +814,8 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0xC9] = [this]() { return opRET(); }; // RET
     opcodeTable[0xD8] = [this]() { return opRETC(); };  // RET C
     opcodeTable[0xD0] = [this]() { return opRETNC(); }; // RET NC
+    opcodeTable[0xF0] = [this]() { return opRETP(); };  // RET P
+    opcodeTable[0xF8] = [this]() { return opRETM(); };  // RET M
 
     opcodeTable[0xC4] = [this]() { return opCALLNZImm16(); }; // CALL NZ,nn
     opcodeTable[0xCC] = [this]() { return opCALLZImm16(); };  // CALL Z,nn
@@ -1187,6 +1189,30 @@ int CPU::opRETNC()
 int CPU::opRETC()
 {
     if (F & FLAG_C)
+    {
+        PC = pop16();
+        return 11;
+    }
+
+    return 5;
+}
+
+int CPU::opRETP()
+{
+    // RET P = return if sign flag is clear
+    if ((F & FLAG_S) == 0)
+    {
+        PC = pop16();
+        return 11;
+    }
+
+    return 5;
+}
+
+int CPU::opRETM()
+{
+    // RET M = return if sign flag is set
+    if (F & FLAG_S)
     {
         PC = pop16();
         return 11;
