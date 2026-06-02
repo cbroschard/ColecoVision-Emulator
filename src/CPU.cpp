@@ -941,6 +941,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x0F] = [this]() { return opRRCA(); }; // RRCA
     opcodeTable[0x1F] = [this]() { return opRRA(); }; // RRA
     opcodeTable[0x17] = [this]() { return opRLA(); }; // RLA
+    opcodeTable[0x27] = [this]() { return opDAA(); };  // DAA
     opcodeTable[0x2F] = [this]() { return opCPL(); }; // CPL
     opcodeTable[0x37] = [this]() { return opSCF(); };  // SCF
 
@@ -1805,6 +1806,72 @@ int CPU::opJRC()
     }
 
     return 7;
+}
+
+int CPU::opDAA()
+{
+    const uint8_t oldA = A;
+
+    const bool oldN = (F & FLAG_N) != 0;
+    const bool oldH = (F & FLAG_H) != 0;
+    bool carry = (F & FLAG_C) != 0;
+
+    uint8_t correction = 0;
+
+    if (!oldN)
+    {
+        // After ADD/ADC.
+        if (oldH || ((A & 0x0F) > 0x09))
+            correction |= 0x06;
+
+        if (carry || A > 0x99)
+        {
+            correction |= 0x60;
+            carry = true;
+        }
+
+        A = static_cast<uint8_t>(A + correction);
+    }
+    else
+    {
+        // After SUB/SBC.
+        if (oldH)
+            correction |= 0x06;
+
+        if (carry)
+            correction |= 0x60;
+
+        A = static_cast<uint8_t>(A - correction);
+    }
+
+    uint8_t newF = 0;
+
+    if (A & 0x80)
+        newF |= FLAG_S;
+
+    if (A == 0)
+        newF |= FLAG_Z;
+
+    if (parityEven(A))
+        newF |= FLAG_PV;
+
+    // Undocumented flags from adjusted A.
+    newF |= A & (FLAG_Y | FLAG_X);
+
+    // N is preserved.
+    if (oldN)
+        newF |= FLAG_N;
+
+    // H is affected by the adjustment.
+    if ((oldA ^ A) & 0x10)
+        newF |= FLAG_H;
+
+    if (carry)
+        newF |= FLAG_C;
+
+    F = newF;
+
+    return 4;
 }
 
 int CPU::opCPL()

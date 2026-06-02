@@ -466,6 +466,7 @@ class CPU
         int opRLCA();
         int opRLA();
         int opSCF();
+        int opDAA();
 
         int opRST(uint16_t address);
 
