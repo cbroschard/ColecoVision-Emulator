@@ -7,9 +7,231 @@
 // strictly prohibited without the prior written consent of the author.
 #include "Debug/MLMonitor.h"
 
-MLMonitor::MLMonitor()
+MLMonitor::MLMonitor() :
+    running(false),
+    outputFileEnabled(false)
 {
 
 }
 
-MLMonitor::~MLMonitor() = default;
+MLMonitor::~MLMonitor()
+{
+    if (outputFile.is_open())
+        outputFile.close();
+}
+
+std::string MLMonitor::executeAndCapture(const std::string& cmdLine)
+{
+    std::ostringstream buffer;
+    auto* old = std::cout.rdbuf(buffer.rdbuf()); // Redirect std::cout to buffer
+
+    try
+    {
+        handleCommand(cmdLine);
+    }
+    catch (const std::exception& ex)
+    {
+        std::cout << "Error executing command: " << ex.what() << "\n";
+    }
+    catch (...)
+    {
+        std::cout << "Error executing command: unknown exception\n";
+    }
+
+    std::cout.rdbuf(old); // Restore std::cout
+
+    const std::string out = buffer.str();
+
+    // Tee monitor command + output to file if enabled.
+    writeOutputFileBlock(cmdLine, out);
+
+    return out;
+}
+
+void MLMonitor::enterMonitor()
+{
+    if (mlmonitorBackend) mlmonitorBackend->enterMonitor();
+}
+
+std::string MLMonitor::getPrompt() const
+{
+    return "> ";
+}
+
+void MLMonitor::handleCommand(const std::string& line)
+{
+    std::istringstream iss(line);
+    std::string cmd;
+    iss >> cmd;
+
+    // Blank command outside interactive assembler mode does nothing.
+    if (cmd.empty())
+        return;
+
+    // Normalize to lowercase
+    std::transform(cmd.begin(), cmd.end(), cmd.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    if (cmd == "exit" || cmd == "q" || cmd == "quit")
+    {
+        running = false;
+        return;
+    }
+
+    std::vector<std::string> args;
+    args.push_back(cmd);
+
+    std::string token;
+    while (iss >> token)
+        args.push_back(token);
+
+    if (cmd == "out" || cmd == "capture")
+    {
+        handleOutputFileCommand(args);
+        return;
+    }
+
+    if (cmd == "help" || cmd == "h" || cmd == "?")
+    {
+        // If user typed: help <command>
+        std::string topic;
+        if (iss >> topic)
+        {
+            std::transform(topic.begin(), topic.end(), topic.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+
+            auto it = commands.find(topic);
+            if (it != commands.end())
+            {
+                const std::string txt = it->second->help();
+                std::cout << txt;
+                if (!txt.empty() && txt.back() != '\n')
+                    std::cout << "\n";
+            }
+            else
+            {
+                std::cout << "Unknown command: " << topic << "\n";
+            }
+            return;
+        }
+
+        // Plain "help" => main help
+        std::map<std::string, std::vector<std::string>> grouped;
+        for (const auto& kv : commands)
+            grouped[kv.second->category()].push_back(kv.second->shortHelp());
+
+        std::cout << "Available commands:\n";
+        for (auto& [cat, cmds] : grouped)
+        {
+            std::cout << "  " << cat << ":\n";
+            for (auto& helpLine : cmds)
+                std::cout << "    " << helpLine << "\n";
+        }
+        return;
+    }
+
+    auto it = commands.find(cmd);
+    if (it != commands.end())
+    {
+        it->second->execute(*this, args);
+    }
+    else
+    {
+        std::cout << "Unknown command: " << cmd << "\n";
+    }
+}
+
+void MLMonitor::writeOutputFileBlock(const std::string& cmdLine, const std::string& output)
+{
+    if (!outputFileEnabled || !outputFile.is_open())
+        return;
+
+    outputFile << "> " << cmdLine << "\n";
+
+    if (!output.empty())
+    {
+        outputFile << output;
+
+        if (output.back() != '\n')
+            outputFile << "\n";
+    }
+
+    outputFile << "\n";
+    outputFile.flush();
+}
+
+void MLMonitor::handleOutputFileCommand(const std::vector<std::string>& args)
+{
+    if (args.size() < 2)
+    {
+        std::cout <<
+            "Usage:\n"
+            "  out on <file>\n"
+            "  out off\n"
+            "  out status\n";
+        return;
+    }
+
+    std::string sub = args[1];
+    std::transform(sub.begin(), sub.end(), sub.begin(), [](unsigned char c) {
+        return static_cast<char>(std::tolower(c));
+    });
+
+    if (sub == "on")
+    {
+        std::string path = "mlmonitor_output.txt";
+
+        if (args.size() >= 3)
+            path = args[2];
+
+        // Close previous file if one is already open.
+        if (outputFile.is_open())
+            outputFile.close();
+
+        outputFile.open(path, std::ios::out | std::ios::app);
+
+        if (!outputFile.is_open())
+        {
+            outputFileEnabled = false;
+            outputFilePath.clear();
+            std::cout << "Unable to open output file: " << path << "\n";
+            return;
+        }
+
+        outputFileEnabled = true;
+        outputFilePath = path;
+
+        std::cout << "Monitor output file enabled: " << outputFilePath << "\n";
+        return;
+    }
+
+    if (sub == "off")
+    {
+        if (outputFile.is_open())
+            outputFile.close();
+
+        outputFileEnabled = false;
+
+        std::cout << "Monitor output file disabled";
+
+        if (!outputFilePath.empty())
+            std::cout << ": " << outputFilePath;
+
+        std::cout << "\n";
+        return;
+    }
+
+    if (sub == "status")
+    {
+        if (outputFileEnabled && outputFile.is_open())
+            std::cout << "Monitor output file is ON: " << outputFilePath << "\n";
+        else
+            std::cout << "Monitor output file is OFF\n";
+
+        return;
+    }
+
+    std::cout << "Unknown out command: " << sub << "\n";
+}
