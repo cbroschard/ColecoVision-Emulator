@@ -63,21 +63,21 @@ uint8_t Controller::read() const
 
 uint8_t Controller::readKeypadNibble() const
 {
-    if (isButtonPressed(ControllerButton::Key1))     return 0x0A;
+    if (isButtonPressed(ControllerButton::Key1))     return 0x0E;
     if (isButtonPressed(ControllerButton::Key2))     return 0x0D;
-    if (isButtonPressed(ControllerButton::Key3))     return 0x07;
+    if (isButtonPressed(ControllerButton::Key3))     return 0x06;
 
-    if (isButtonPressed(ControllerButton::Key4))     return 0x0C;
-    if (isButtonPressed(ControllerButton::Key5))     return 0x02;
-    if (isButtonPressed(ControllerButton::Key6))     return 0x03;
+    if (isButtonPressed(ControllerButton::Key4))     return 0x01;
+    if (isButtonPressed(ControllerButton::Key5))     return 0x09;
+    if (isButtonPressed(ControllerButton::Key6))     return 0x07;
 
-    if (isButtonPressed(ControllerButton::Key7))     return 0x0E;
-    if (isButtonPressed(ControllerButton::Key8))     return 0x05;
-    if (isButtonPressed(ControllerButton::Key9))     return 0x01;
+    if (isButtonPressed(ControllerButton::Key7))     return 0x0C;
+    if (isButtonPressed(ControllerButton::Key8))     return 0x08;
+    if (isButtonPressed(ControllerButton::Key9))     return 0x0B;
 
-    if (isButtonPressed(ControllerButton::KeyStar))  return 0x09;
-    if (isButtonPressed(ControllerButton::Key0))     return 0x0B;
-    if (isButtonPressed(ControllerButton::KeyPound)) return 0x06;
+    if (isButtonPressed(ControllerButton::KeyStar))  return 0x0A;
+    if (isButtonPressed(ControllerButton::Key0))     return 0x03;
+    if (isButtonPressed(ControllerButton::KeyPound)) return 0x05;
 
     return 0x0F;
 }
