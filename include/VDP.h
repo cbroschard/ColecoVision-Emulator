@@ -67,7 +67,13 @@ class VDP
 
         bool irqAsserted;
 
+        // Helpers
+        inline uint8_t getBackdropColor() const { return regs[7] & 0x0F; }
+        inline bool isDisplayEnabled() const { return (regs[1] & 0x40) != 0; }
+
         void updateModeFromRegisters();
+
+        void clearToBackdrop(VideoOutput& output);
 };
 
 #endif // VDP_H

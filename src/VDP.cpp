@@ -155,6 +155,62 @@ void VDP::writeData(uint8_t value)
     controlLatch = false;
 }
 
+void VDP::renderFrame(VideoOutput& output)
+{
+    const uint8_t backdrop = getBackdropColor();
+
+    if (!isDisplayEnabled())
+    {
+        clearToBackdrop(output);
+        return;
+    }
+
+    const uint16_t nameTableBase =
+        static_cast<uint16_t>((regs[2] & 0x0F) << 10);
+
+    const uint16_t colorTableBase =
+        static_cast<uint16_t>(regs[3] << 6);
+
+    const uint16_t patternTableBase =
+        static_cast<uint16_t>((regs[4] & 0x07) << 11);
+
+    for (int tileY = 0; tileY < 24; ++tileY)
+    {
+        for (int tileX = 0; tileX < 32; ++tileX)
+        {
+            const uint16_t nameAddr =
+                static_cast<uint16_t>(nameTableBase + tileY * 32 + tileX);
+
+            const uint8_t patternIndex = vram[nameAddr & 0x3FFF];
+
+            const uint8_t colorByte =
+                vram[(colorTableBase + (patternIndex >> 3)) & 0x3FFF];
+
+            uint8_t fg = static_cast<uint8_t>(colorByte >> 4);
+            uint8_t bg = static_cast<uint8_t>(colorByte & 0x0F);
+
+            if (fg == 0) fg = backdrop;
+            if (bg == 0) bg = backdrop;
+
+            for (int row = 0; row < 8; ++row)
+            {
+                const uint8_t patternByte =
+                    vram[(patternTableBase + patternIndex * 8 + row) & 0x3FFF];
+
+                for (int col = 0; col < 8; ++col)
+                {
+                    const bool pixelOn = (patternByte & (0x80 >> col)) != 0;
+
+                    const int x = tileX * 8 + col;
+                    const int y = tileY * 8 + row;
+
+                    output.setPixel(x, y, pixelOn ? fg : bg);
+                }
+            }
+        }
+    }
+}
+
 void VDP::updateModeFromRegisters()
 {
     const bool m1 = (regs[1] & 0x10) != 0;
@@ -184,51 +240,15 @@ void VDP::updateModeFromRegisters()
     }
 }
 
-void VDP::renderFrame(VideoOutput& output)
+void VDP::clearToBackdrop(VideoOutput& output)
 {
-    const uint16_t nameTableBase =
-        static_cast<uint16_t>((regs[2] & 0x0F) << 10);
+    const uint8_t backdrop = getBackdropColor();
 
-    const uint16_t colorTableBase =
-        static_cast<uint16_t>(regs[3] << 6);
-
-    const uint16_t patternTableBase =
-        static_cast<uint16_t>((regs[4] & 0x07) << 11);
-
-    for (int tileY = 0; tileY < 24; ++tileY)
+    for (int y = 0; y < 192; ++y)
     {
-        for (int tileX = 0; tileX < 32; ++tileX)
+        for (int x = 0; x < 256; ++x)
         {
-            const uint16_t nameAddr =
-                static_cast<uint16_t>(nameTableBase + tileY * 32 + tileX);
-
-            const uint8_t patternIndex = vram[nameAddr & 0x3FFF];
-
-            const uint8_t colorByte =
-                vram[(colorTableBase + (patternIndex >> 3)) & 0x3FFF];
-
-            uint8_t fg = static_cast<uint8_t>(colorByte >> 4);
-            uint8_t bg = static_cast<uint8_t>(colorByte & 0x0F);
-
-            // TMS9918 color 0 means transparent. For now, make it visible as black.
-            if (fg == 0) fg = 15;
-            if (bg == 0) bg = 1;
-
-            for (int row = 0; row < 8; ++row)
-            {
-                const uint8_t patternByte =
-                    vram[(patternTableBase + patternIndex * 8 + row) & 0x3FFF];
-
-                for (int col = 0; col < 8; ++col)
-                {
-                    const bool pixelOn = (patternByte & (0x80 >> col)) != 0;
-
-                    const int x = tileX * 8 + col;
-                    const int y = tileY * 8 + row;
-
-                    output.setPixel(x, y, pixelOn ? fg : bg);
-                }
-            }
+            output.setPixel(x, y, backdrop);
         }
     }
 }
