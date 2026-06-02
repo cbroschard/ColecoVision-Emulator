@@ -16,6 +16,7 @@
 #include "Controller.h"
 #include "CPU.h"
 #include "InputManager.h"
+#include "IRQLine.h"
 #include "Memory.h"
 #include "SDL3/SDL.h"
 #include "VDP.h"
@@ -45,6 +46,7 @@ class ColecoVisionSystem
         std::unique_ptr<Controller> controller2;
         std::unique_ptr<CPU> cpu;
         std::unique_ptr<InputManager> inputManager;
+        std::unique_ptr<IRQLine> irqLine;
         std::unique_ptr<Memory> mem;
         std::unique_ptr<PSG> psg;
         std::unique_ptr<VDP> vdp;

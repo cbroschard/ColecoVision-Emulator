@@ -16,6 +16,7 @@ ColecoVisionSystem::ColecoVisionSystem()
     controller2 = std::make_unique<Controller>();
     cpu = std::make_unique<CPU>();
     inputManager = std::make_unique<InputManager>();
+    irqLine = std::make_unique<IRQLine>();
     mem = std::make_unique<Memory>();
     psg = std::make_unique<PSG>();
     vdp = std::make_unique<VDP>();
@@ -35,6 +36,7 @@ void ColecoVisionSystem::reset()
     mem->reset();
     cart->reset();
     cpu->reset();
+    irqLine->reset();
     vdp->reset();
     psg->reset();
 
