@@ -67,6 +67,10 @@ class VDP
 
         bool irqAsserted;
 
+        // Graphics modes rendering
+        void renderGraphicsI(VideoOutput& output);
+        void renderUnsupportedMode(VideoOutput& output);
+
         // Helpers
         inline uint8_t getBackdropColor() const { return regs[7] & 0x0F; }
         inline bool isDisplayEnabled() const { return (regs[1] & 0x40) != 0; }

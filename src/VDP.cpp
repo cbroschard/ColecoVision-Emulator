@@ -157,13 +157,30 @@ void VDP::writeData(uint8_t value)
 
 void VDP::renderFrame(VideoOutput& output)
 {
-    const uint8_t backdrop = getBackdropColor();
-
     if (!isDisplayEnabled())
     {
         clearToBackdrop(output);
         return;
     }
+
+    switch (mode)
+    {
+        case VDPMode::GraphicsI:
+            renderGraphicsI(output);
+            break;
+
+        case VDPMode::GraphicsII:
+        case VDPMode::Text:
+        case VDPMode::Multicolor:
+        default:
+            renderUnsupportedMode(output);
+            break;
+    }
+}
+
+void VDP::renderGraphicsI(VideoOutput& output)
+{
+    const uint8_t backdrop = getBackdropColor();
 
     const uint16_t nameTableBase =
         static_cast<uint16_t>((regs[2] & 0x0F) << 10);
@@ -209,6 +226,11 @@ void VDP::renderFrame(VideoOutput& output)
             }
         }
     }
+}
+
+void VDP::renderUnsupportedMode(VideoOutput& output)
+{
+    clearToBackdrop(output);
 }
 
 void VDP::updateModeFromRegisters()
