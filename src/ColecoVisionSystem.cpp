@@ -12,13 +12,14 @@ ColecoVisionSystem::ColecoVisionSystem()
 {
     audioOutput = std::make_unique<AudioOutput>();
     bus = std::make_unique<Bus>();
-    cart = std::make_unique<Cartridge>();
+    cartridge = std::make_unique<Cartridge>();
     controller1 = std::make_unique<Controller>();
     controller2 = std::make_unique<Controller>();
     cpu = std::make_unique<CPU>();
     inputManager = std::make_unique<InputManager>();
     irqLine = std::make_unique<IRQLine>();
-    mem = std::make_unique<Memory>();
+    memory = std::make_unique<Memory>();
+    monbackend = std::make_unique<MLMonitorBackend>();
     psg = std::make_unique<PSG>();
     vdp = std::make_unique<VDP>();
     videoOutput = std::make_unique<VideoOutput>();
@@ -34,8 +35,8 @@ ColecoVisionSystem::~ColecoVisionSystem()
 void ColecoVisionSystem::reset()
 {
     // Hardware resets
-    mem->reset();
-    cart->reset();
+    memory->reset();
+    cartridge->reset();
     cpu->reset();
     irqLine->reset();
     vdp->reset();
@@ -123,12 +124,12 @@ void ColecoVisionSystem::setBIOSPath(const std::string& path)
 
 bool ColecoVisionSystem::loadBIOS(const std::string& path)
 {
-    return mem->loadBIOS(path);
+    return memory->loadBIOS(path);
 }
 
 bool ColecoVisionSystem::loadCartridge(const std::string& path)
 {
-    return cart->loadROM(path);
+    return cartridge->loadROM(path);
 }
 
 void ColecoVisionSystem::wireUp()
@@ -137,7 +138,7 @@ void ColecoVisionSystem::wireUp()
 
     bus->attachController1Instance(controller1.get());
     bus->attachController2Instance(controller2.get());
-    bus->attachMemoryInstance(mem.get());
+    bus->attachMemoryInstance(memory.get());
     bus->attachPSGInstance(psg.get());
     bus->attachVDPInstance(vdp.get());
 
@@ -146,5 +147,14 @@ void ColecoVisionSystem::wireUp()
     inputManager->attachController1(controller1.get());
     inputManager->attachController2(controller2.get());
 
-    mem->attachCartridgeInstance(cart.get());
+    memory->attachCartridgeInstance(cartridge.get());
+
+    monbackend->attachBusInstance(bus.get());
+    monbackend->attachCartridgeInstance(cartridge.get());
+    monbackend->attachController1Instance(controller1.get());
+    monbackend->attachController2Instance(controller2.get());
+    monbackend->attachCPUInstance(cpu.get());
+    monbackend->attachMemoryInstance(memory.get());
+    monbackend->attachPSGInstance(psg.get());
+    monbackend->attachVDPInstance(vdp.get());
 }

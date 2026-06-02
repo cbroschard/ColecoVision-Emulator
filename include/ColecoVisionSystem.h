@@ -16,6 +16,7 @@
 #include "Cartridge.h"
 #include "Controller.h"
 #include "CPU.h"
+#include "Debug/MlMonitorBackend.h"
 #include "InputManager.h"
 #include "IRQLine.h"
 #include "Memory.h"
@@ -43,13 +44,14 @@ class ColecoVisionSystem
     private:
         std::unique_ptr<AudioOutput> audioOutput;
         std::unique_ptr<Bus> bus;
-        std::unique_ptr<Cartridge> cart;
+        std::unique_ptr<Cartridge> cartridge;
         std::unique_ptr<Controller> controller1;
         std::unique_ptr<Controller> controller2;
         std::unique_ptr<CPU> cpu;
         std::unique_ptr<InputManager> inputManager;
         std::unique_ptr<IRQLine> irqLine;
-        std::unique_ptr<Memory> mem;
+        std::unique_ptr<Memory> memory;
+        std::unique_ptr<MLMonitorBackend> monbackend;
         std::unique_ptr<PSG> psg;
         std::unique_ptr<VDP> vdp;
         std::unique_ptr<VideoOutput> videoOutput;
