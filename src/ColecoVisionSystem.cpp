@@ -20,6 +20,7 @@ ColecoVisionSystem::ColecoVisionSystem()
     irqLine = std::make_unique<IRQLine>();
     memory = std::make_unique<Memory>();
     monbackend = std::make_unique<MLMonitorBackend>();
+    monitorController = std::make_unique<MonitorController>();
     psg = std::make_unique<PSG>();
     vdp = std::make_unique<VDP>();
     videoOutput = std::make_unique<VideoOutput>();

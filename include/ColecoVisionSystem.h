@@ -20,6 +20,7 @@
 #include "InputManager.h"
 #include "IRQLine.h"
 #include "Memory.h"
+#include "MonitorController.h"
 #include "SDL3/SDL.h"
 #include "VDP.h"
 #include "VideoOutput.h"
@@ -39,6 +40,9 @@ class ColecoVisionSystem
         bool loadBIOS(const std::string& path);
         bool loadCartridge(const std::string& path);
 
+        // ML Monitor
+        inline void enterMonitor() { monitorController->openMonitor(); }
+
     protected:
 
     private:
@@ -52,6 +56,7 @@ class ColecoVisionSystem
         std::unique_ptr<IRQLine> irqLine;
         std::unique_ptr<Memory> memory;
         std::unique_ptr<MLMonitorBackend> monbackend;
+        std::unique_ptr<MonitorController> monitorController;
         std::unique_ptr<PSG> psg;
         std::unique_ptr<VDP> vdp;
         std::unique_ptr<VideoOutput> videoOutput;
