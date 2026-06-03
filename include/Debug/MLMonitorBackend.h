@@ -8,6 +8,8 @@
 #ifndef MLMONITORBACKEND_H
 #define MLMONITORBACKEND_H
 
+#include "VDP.h"
+
 // Forward declarations
 class Bus;
 class Cartridge;
@@ -16,7 +18,6 @@ class Controller;
 class CPU;
 class Memory;
 class PSG;
-class VDP;
 
 class MLMonitorBackend
 {
@@ -34,6 +35,9 @@ class MLMonitorBackend
         inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
         void enterMonitor();
+
+        // VDP Functions
+        inline VDPMode getVDPMode() const { return vdp->getMode(); }
 
     protected:
 
