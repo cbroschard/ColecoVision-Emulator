@@ -27,6 +27,7 @@ class MLMonitor
         virtual ~MLMonitor();
 
         inline void attachMLMonitorBackendInstance(MLMonitorBackend* mlmonitorBackend) { this->mlmonitorBackend = mlmonitorBackend; }
+        inline MLMonitorBackend* getMLMonitorBackend() const { return mlmonitorBackend; }
 
         std::string executeAndCapture(const std::string& cmdLine);
 
