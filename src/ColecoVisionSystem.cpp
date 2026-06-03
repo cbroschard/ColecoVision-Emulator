@@ -99,6 +99,20 @@ void ColecoVisionSystem::run()
             inputManager->handleEvent(event);
         }
 
+        /*
+            If the monitor is open, pause the emulated machine.
+
+            We still tick/render the monitor window so it remains responsive,
+            but we do NOT step the CPU, tick the VDP, update IRQs, queue audio,
+            or advance the emulated frame.
+        */
+        if (monitorController->isOpen())
+        {
+            monitorController->tick();
+            SDL_Delay(16);
+            continue;
+        }
+
         int frameCycles = 0;
 
         while (frameCycles < CYCLES_PER_FRAME)
