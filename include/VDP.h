@@ -69,6 +69,7 @@ class VDP
 
         // Graphics modes rendering
         void renderGraphicsI(VideoOutput& output);
+        void renderGraphicsII(VideoOutput& output);
         void renderUnsupportedMode(VideoOutput& output);
 
         // Sprite rendering
