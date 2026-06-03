@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <iomanip>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -29,7 +30,7 @@ class MonitorCommand
         virtual std::string shortHelp() const = 0;
         virtual std::string help() const = 0;
 
-        virtual void execute(MLMonitor& mon, const std::vector<std::string>& args) = 0;
+        virtual void execute(MLMonitor& mlMonitor, const std::vector<std::string>& args) = 0;
 
     protected:
         uint16_t parseAddress(const std::string& s);
