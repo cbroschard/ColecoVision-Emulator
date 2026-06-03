@@ -6,12 +6,13 @@
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
 #include "Debug/MLMonitor.h"
+#include "Debug/VDPCommand.h"
 
 MLMonitor::MLMonitor() :
     running(false),
     outputFileEnabled(false)
 {
-
+    registerCommand(std::make_unique<VDPCommand>());
 }
 
 MLMonitor::~MLMonitor()
