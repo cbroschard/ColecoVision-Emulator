@@ -170,6 +170,8 @@ void VDP::renderFrame(VideoOutput& output)
             break;
 
         case VDPMode::GraphicsII:
+            renderGraphicsII(output);
+            break;
         case VDPMode::Text:
         case VDPMode::Multicolor:
         default:
@@ -220,6 +222,100 @@ void VDP::renderGraphicsI(VideoOutput& output)
                 for (int col = 0; col < 8; ++col)
                 {
                     const bool pixelOn = (patternByte & (0x80 >> col)) != 0;
+
+                    const int x = tileX * 8 + col;
+                    const int y = tileY * 8 + row;
+
+                    output.setPixel(x, y, pixelOn ? fg : bg);
+                }
+            }
+        }
+    }
+}
+
+void VDP::renderGraphicsII(VideoOutput& output)
+{
+    const uint8_t backdrop = getBackdropColor();
+
+    const uint16_t nameTableBase =
+        static_cast<uint16_t>((regs[2] & 0x0F) << 10);
+
+    /*
+        Graphics II uses register masks differently than Graphics I.
+
+        Pattern table:
+            R4 bits 0-2 select/enable pattern table pages.
+
+        Color table:
+            R3 bits select/enable color table pages.
+
+        In the common ColecoVision setup, games usually configure these
+        so each of the three screen thirds gets its own 256-pattern block.
+
+        Screen is 32x24 tiles:
+            tileY 0-7   = top third
+            tileY 8-15  = middle third
+            tileY 16-23 = bottom third
+    */
+
+    const uint16_t colorTableBase =
+        static_cast<uint16_t>((regs[3] & 0x80) << 6);
+
+    const uint16_t patternTableBase =
+        static_cast<uint16_t>((regs[4] & 0x04) << 11);
+
+    for (int tileY = 0; tileY < 24; ++tileY)
+    {
+        const int third = tileY / 8;
+
+        for (int tileX = 0; tileX < 32; ++tileX)
+        {
+            const uint16_t nameAddr =
+                static_cast<uint16_t>(nameTableBase + tileY * 32 + tileX);
+
+            const uint8_t patternIndex =
+                vram[nameAddr & 0x3FFF];
+
+            /*
+                Graphics II pattern/color layout:
+
+                Each screen third has a separate 256-character section.
+
+                    third 0: patterns 0x000-0x7FF
+                    third 1: patterns 0x800-0xFFF
+                    third 2: patterns 0x1000-0x17FF
+
+                Same idea for color bytes.
+
+                Each pattern row has its own color byte.
+            */
+            const uint16_t charBase =
+                static_cast<uint16_t>(third * 0x0800 + patternIndex * 8);
+
+            for (int row = 0; row < 8; ++row)
+            {
+                const uint16_t patternAddr =
+                    static_cast<uint16_t>(patternTableBase + charBase + row);
+
+                const uint16_t colorAddr =
+                    static_cast<uint16_t>(colorTableBase + charBase + row);
+
+                const uint8_t patternByte =
+                    vram[patternAddr & 0x3FFF];
+
+                const uint8_t colorByte =
+                    vram[colorAddr & 0x3FFF];
+
+                uint8_t fg = static_cast<uint8_t>(colorByte >> 4);
+                uint8_t bg = static_cast<uint8_t>(colorByte & 0x0F);
+
+                if (fg == 0) fg = backdrop;
+                if (bg == 0) bg = backdrop;
+
+                for (int col = 0; col < 8; ++col)
+                {
+                    const bool pixelOn =
+                        (patternByte & (0x80 >> col)) != 0;
 
                     const int x = tileX * 8 + col;
                     const int y = tileY * 8 + row;
