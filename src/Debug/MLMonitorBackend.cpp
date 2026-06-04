@@ -36,6 +36,14 @@ void MLMonitorBackend::enterMonitor()
         host->enterMonitor();
 }
 
+CartridgeInfo MLMonitorBackend::getCartridgeInfo() const
+{
+    if (cartridge == nullptr)
+        return CartridgeInfo{};
+
+    return cartridge->getInfo();
+}
+
 CPU& MLMonitorBackend::getCPU()
 {
     return *cpu;

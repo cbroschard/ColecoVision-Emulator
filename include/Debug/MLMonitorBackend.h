@@ -9,11 +9,11 @@
 #define MLMONITORBACKEND_H
 
 #include <cstdint>
+#include "Cartridge.h"
 #include "VDP.h"
 
 // Forward declarations
 class Bus;
-class Cartridge;
 class ColecoVisionSystem;
 class Controller;
 class CPU;
@@ -37,6 +37,9 @@ class MLMonitorBackend
         inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
         void enterMonitor();
+
+        // Cartridge
+        CartridgeInfo getCartridgeInfo() const;
 
         // CPU access for monitor/debug commands
         CPU& getCPU();
