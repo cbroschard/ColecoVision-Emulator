@@ -98,6 +98,19 @@ std::string hex4(uint16_t value)
     return s.str();
 }
 
+std::string hex8(uint32_t value)
+{
+    std::ostringstream ss;
+
+    ss << std::uppercase
+       << std::hex
+       << std::setfill('0')
+       << std::setw(8)
+       << static_cast<uint32_t>(value);
+
+    return ss.str();
+}
+
 std::string trimCopy(std::string s)
 {
     auto notSpace = [](int ch){ return !std::isspace(ch); };

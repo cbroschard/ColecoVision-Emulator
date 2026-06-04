@@ -31,6 +31,7 @@ std::pair<uint16_t,uint16_t> parseRangePair(std::string input);
 std::string hex2(uint8_t value);
 std::string hex4(uint8_t high, uint8_t low);
 std::string hex4(uint16_t value);
+std::string hex8(uint32_t value);
 std::string trimCopy(std::string s);
 std::string sanitizeAddrToken(std::string s);
 std::string joinArgs(const std::vector<std::string>& args, size_t start);
