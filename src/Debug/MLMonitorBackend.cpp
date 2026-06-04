@@ -36,3 +36,23 @@ void MLMonitorBackend::enterMonitor()
     if (host)
         host->enterMonitor();
 }
+
+CPU& MLMonitorBackend::getCPU()
+{
+    return *cpu;
+}
+
+const CPU& MLMonitorBackend::getCPU() const
+{
+    return *cpu;
+}
+
+uint8_t MLMonitorBackend::debugRead8(uint16_t address) const
+{
+    return cpu->debugRead8(address);
+}
+
+void MLMonitorBackend::debugWrite8(uint16_t address, uint8_t value)
+{
+    cpu->debugWrite8(address, value);
+}

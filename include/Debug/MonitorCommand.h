@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include "Common/CommandUtils.h"
 
 // Forward declarations
 class MLMonitor;

@@ -8,6 +8,7 @@
 #ifndef MLMONITORBACKEND_H
 #define MLMONITORBACKEND_H
 
+#include <cstdint>
 #include "VDP.h"
 
 // Forward declarations
@@ -35,6 +36,14 @@ class MLMonitorBackend
         inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
         void enterMonitor();
+
+        // CPU access for monitor/debug commands
+        CPU& getCPU();
+        const CPU& getCPU() const;
+
+        // Debug memory access through CPU/bus path
+        uint8_t debugRead8(uint16_t address) const;
+        void debugWrite8(uint16_t address, uint8_t value);
 
         // VDP Functions
         inline VDPMode getVDPMode() const { return vdp->getMode(); }
