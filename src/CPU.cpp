@@ -949,6 +949,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x23] = [this]() { return opINCHL(); }; // INC HL
     opcodeTable[0x24] = [this]() { return opINCH(); }; // INC H
     opcodeTable[0x2C] = [this]() { return opINCL(); }; // INC L
+    opcodeTable[0x34] = [this]() { return opINCHLAddr(); }; // INC (HL)
     opcodeTable[0x33] = [this]() { return opINCSP(); }; // INC SP
     opcodeTable[0x3C] = [this]() { return opINCA(); }; // INC A
 
@@ -959,6 +960,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x25] = [this]() { return opDECH(); }; // DEC H
     opcodeTable[0x2D] = [this]() { return opDECL(); }; // DEC L
     opcodeTable[0x3D] = [this]() { return opDECA(); }; // DEC A
+    opcodeTable[0x35] = [this]() { return opDECHLAddr(); }; // DEC (HL)
 
     // 16-bit INC / DEC
     opcodeTable[0x0B] = [this]() { return opDECBC(); }; // DEC BC
@@ -1488,6 +1490,18 @@ int CPU::opINCL()
     return 4;
 }
 
+int CPU::opINCHLAddr()
+{
+    const uint16_t address = getHL();
+
+    const uint8_t value = read8(address);
+    const uint8_t result = inc8(value);
+
+    write8(address, result);
+
+    return 11;
+}
+
 int CPU::opINCA()
 {
     A = inc8(A);
@@ -1540,6 +1554,18 @@ int CPU::opDECL()
 {
     L = dec8(L);
     return 4;
+}
+
+int CPU::opDECHLAddr()
+{
+    const uint16_t address = getHL();
+
+    const uint8_t value = read8(address);
+    const uint8_t result = dec8(value);
+
+    write8(address, result);
+
+    return 11;
 }
 
 int CPU::opDECBC()
@@ -2474,6 +2500,13 @@ int CPU::executeDD()
             return DD_CYCLE_COUNTS[opcode];
         }
 
+        case 0x96: // SUB (IX+d)
+        {
+            const int8_t d = static_cast<int8_t>(fetch8());
+            subA(read8(static_cast<uint16_t>(IX + d)));
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
         case 0x9E: // SBC A,(IX+d)
         {
             const int8_t d = static_cast<int8_t>(fetch8());
@@ -2493,6 +2526,11 @@ int CPU::executeDD()
             const int8_t d = static_cast<int8_t>(fetch8());
             compareA(read8(static_cast<uint16_t>(IX + d)));
             return DD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xCB: // DD CB d op
+        {
+            return executeIndexedCB(IX, DDCB_CYCLE_COUNTS);
         }
 
         case 0xE1: // POP IX
@@ -3159,6 +3197,11 @@ int CPU::executeFD()
             return FD_CYCLE_COUNTS[opcode];
         }
 
+        case 0xCB: // FD CB d op
+        {
+            return executeIndexedCB(IY, FDCB_CYCLE_COUNTS);
+        }
+
         case 0xE1: // POP IY
         {
             IY = pop16();
@@ -3192,5 +3235,160 @@ int CPU::executeFD()
 
             halted = true;
             return 4;
+    }
+}
+
+int CPU::executeIndexedCB(uint16_t indexBase, const std::array<uint8_t, 256>& cycleCounts)
+{
+    // DD CB d op  or  FD CB d op
+    const int8_t d = static_cast<int8_t>(fetch8());
+    const uint8_t opcode = fetch8();
+
+    const uint16_t address = static_cast<uint16_t>(indexBase + d);
+
+    const uint8_t reg = static_cast<uint8_t>(opcode & 0x07);
+    const uint8_t group = static_cast<uint8_t>(opcode & 0xC0);
+
+    uint8_t value = read8(address);
+    uint8_t result = value;
+
+    auto copyResultToRegister = [this](uint8_t r, uint8_t v)
+    {
+        switch (r)
+        {
+            case 0: B = v; break;
+            case 1: C = v; break;
+            case 2: D = v; break;
+            case 3: E = v; break;
+            case 4: H = v; break;
+            case 5: L = v; break;
+            case 7: A = v; break;
+
+            // r == 6 means memory only.
+            default:
+                break;
+        }
+    };
+
+    // 00-3F: RLC/RRC/RL/RR/SLA/SRA/SLL/SRL (IX/IY+d), optionally copy to r
+    if (group == 0x00)
+    {
+        const uint8_t operation = static_cast<uint8_t>((opcode >> 3) & 0x07);
+        bool carry = false;
+
+        switch (operation)
+        {
+            case 0: // RLC
+                carry = (value & 0x80) != 0;
+                result = static_cast<uint8_t>((value << 1) | (carry ? 0x01 : 0x00));
+                break;
+
+            case 1: // RRC
+                carry = (value & 0x01) != 0;
+                result = static_cast<uint8_t>((value >> 1) | (carry ? 0x80 : 0x00));
+                break;
+
+            case 2: // RL
+            {
+                const bool oldCarry = (F & FLAG_C) != 0;
+                carry = (value & 0x80) != 0;
+                result = static_cast<uint8_t>((value << 1) | (oldCarry ? 0x01 : 0x00));
+                break;
+            }
+
+            case 3: // RR
+            {
+                const bool oldCarry = (F & FLAG_C) != 0;
+                carry = (value & 0x01) != 0;
+                result = static_cast<uint8_t>((value >> 1) | (oldCarry ? 0x80 : 0x00));
+                break;
+            }
+
+            case 4: // SLA
+                carry = (value & 0x80) != 0;
+                result = static_cast<uint8_t>(value << 1);
+                break;
+
+            case 5: // SRA
+                carry = (value & 0x01) != 0;
+                result = static_cast<uint8_t>((value >> 1) | (value & 0x80));
+                break;
+
+            case 6: // SLL / undocumented: shift left, bit 0 set
+                carry = (value & 0x80) != 0;
+                result = static_cast<uint8_t>((value << 1) | 0x01);
+                break;
+
+            case 7: // SRL
+                carry = (value & 0x01) != 0;
+                result = static_cast<uint8_t>(value >> 1);
+                break;
+        }
+
+        write8(address, result);
+        copyResultToRegister(reg, result);
+
+        F = 0;
+
+        if (result & 0x80) F |= FLAG_S;
+        if (result == 0)   F |= FLAG_Z;
+        if (result & 0x20) F |= FLAG_Y;
+        if (result & 0x08) F |= FLAG_X;
+        if (parityEven(result)) F |= FLAG_PV;
+        if (carry) F |= FLAG_C;
+
+        return cycleCounts[opcode];
+    }
+
+    // 40-7F: BIT b,(IX/IY+d)
+    if (group == 0x40)
+    {
+        const uint8_t bit = static_cast<uint8_t>((opcode >> 3) & 0x07);
+        const bool bitSet = (value & (1 << bit)) != 0;
+
+        const uint8_t oldCarry = F & FLAG_C;
+
+        F = oldCarry;
+        F |= FLAG_H;
+
+        if (!bitSet)
+        {
+            F |= FLAG_Z;
+            F |= FLAG_PV;
+        }
+
+        if (bit == 7 && bitSet)
+            F |= FLAG_S;
+
+        // For indexed BIT, undocumented X/Y come from the effective address high byte.
+        const uint8_t addrHigh = static_cast<uint8_t>(address >> 8);
+        F |= addrHigh & (FLAG_Y | FLAG_X);
+
+        return cycleCounts[opcode];
+    }
+
+    // 80-BF: RES b,(IX/IY+d), optionally copy to r
+    if (group == 0x80)
+    {
+        const uint8_t bit = static_cast<uint8_t>((opcode >> 3) & 0x07);
+
+        result = static_cast<uint8_t>(value & static_cast<uint8_t>(~(1 << bit)));
+
+        write8(address, result);
+        copyResultToRegister(reg, result);
+
+        return cycleCounts[opcode];
+    }
+
+    // C0-FF: SET b,(IX/IY+d), optionally copy to r
+    {
+        const uint8_t bit = static_cast<uint8_t>((opcode >> 3) & 0x07);
+
+        result = static_cast<uint8_t>(value | static_cast<uint8_t>(1 << bit));
+
+        write8(address, result);
+        copyResultToRegister(reg, result);
+
+        return cycleCounts[opcode];
     }
 }

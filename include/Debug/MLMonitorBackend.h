@@ -41,6 +41,10 @@ class MLMonitorBackend
         CPU& getCPU();
         const CPU& getCPU() const;
 
+        // PC getter/setter
+        uint16_t getPC() const;
+        void setPC(uint16_t address);
+
         // Debug memory access through CPU/bus path
         uint8_t debugRead8(uint16_t address) const;
         void debugWrite8(uint16_t address, uint8_t value);

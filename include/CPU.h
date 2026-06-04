@@ -455,6 +455,7 @@ class CPU
         int opINCHL();
         int opINCH();
         int opINCL();
+        int opINCHLAddr();
         int opINCSP();
 
         int opDECA();
@@ -464,6 +465,7 @@ class CPU
         int opDECE();
         int opDECH();
         int opDECL();
+        int opDECHLAddr();
 
         int opDECBC();
         int opDECDE();
@@ -532,6 +534,7 @@ class CPU
         int executeED();
         int executeDD();
         int executeFD();
+        int executeIndexedCB(uint16_t indexBase, const std::array<uint8_t, 256>& cycleCounts);
 };
 
 #endif // CPU_H

@@ -47,6 +47,16 @@ const CPU& MLMonitorBackend::getCPU() const
     return *cpu;
 }
 
+uint16_t MLMonitorBackend::getPC() const
+{
+    return cpu->getPC();
+}
+
+void MLMonitorBackend::setPC(uint16_t address)
+{
+    cpu->setPC(address);
+}
+
 uint8_t MLMonitorBackend::debugRead8(uint16_t address) const
 {
     return cpu->debugRead8(address);
