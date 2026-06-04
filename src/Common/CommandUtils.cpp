@@ -14,22 +14,36 @@ uint16_t parseAddress(const std::string& arg)
         throw std::runtime_error("Invalid address format: empty");
     }
 
-    if (arg[0] == '$')
+    std::string s = sanitizeAddrToken(arg);
+
+    if (s.empty())
     {
-        return static_cast<uint16_t>(std::stoul(arg.substr(1), nullptr, 16));
+        throw std::runtime_error("Invalid address format: empty");
     }
-    else if (arg.rfind("0x", 0) == 0 || arg.rfind("0X", 0) == 0)
+
+    unsigned long value = 0;
+
+    if (s[0] == '$')
     {
-        return static_cast<uint16_t>(std::stoul(arg.substr(2), nullptr, 16));
+        value = std::stoul(s.substr(1), nullptr, 16);
     }
-    else if (arg.find_first_of("ABCDEFabcdef") != std::string::npos)
+    else if (s.rfind("0x", 0) == 0 || s.rfind("0X", 0) == 0)
     {
-        return static_cast<uint16_t>(std::stoul(arg, nullptr, 16));
+        value = std::stoul(s.substr(2), nullptr, 16);
     }
     else
     {
-        return static_cast<uint16_t>(std::stoul(arg, nullptr, 10));
+        // ML monitor convention:
+        // bare addresses are hexadecimal, so "8008" means $8008.
+        value = std::stoul(s, nullptr, 16);
     }
+
+    if (value > 0xFFFFul)
+    {
+        throw std::runtime_error("Address out of range");
+    }
+
+    return static_cast<uint16_t>(value);
 }
 
 uint32_t parseAddress32(const std::string& arg)
@@ -37,16 +51,19 @@ uint32_t parseAddress32(const std::string& arg)
     if (arg.empty())
         throw std::runtime_error("Invalid address format: empty");
 
+    std::string s = sanitizeAddrToken(arg);
+
+    if (s.empty())
+        throw std::runtime_error("Invalid address format: empty");
+
     unsigned long value = 0;
 
-    if (arg[0] == '$')
-        value = std::stoul(arg.substr(1), nullptr, 16);
-    else if (arg.rfind("0x", 0) == 0 || arg.rfind("0X", 0) == 0)
-        value = std::stoul(arg.substr(2), nullptr, 16);
-    else if (arg.find_first_of("ABCDEFabcdef") != std::string::npos)
-        value = std::stoul(arg, nullptr, 16);
+    if (s[0] == '$')
+        value = std::stoul(s.substr(1), nullptr, 16);
+    else if (s.rfind("0x", 0) == 0 || s.rfind("0X", 0) == 0)
+        value = std::stoul(s.substr(2), nullptr, 16);
     else
-        value = std::stoul(arg, nullptr, 10);
+        value = std::stoul(s, nullptr, 16);
 
     if (value > 0xFFFFFFul)
         throw std::runtime_error("REU address out of range");

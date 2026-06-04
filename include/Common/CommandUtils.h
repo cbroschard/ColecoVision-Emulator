@@ -19,7 +19,8 @@
 #include <utility>
 #include <vector>
 
-// Accept address as hex or decimal
+// Accept addresses as hex. Prefixes $ and 0x are optional.
+// Bare monitor addresses like 8008 are treated as $8008.
 uint16_t parseAddress(const std::string& arg);
 uint32_t parseAddress32(const std::string& arg);
 
