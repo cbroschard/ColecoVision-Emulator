@@ -19,6 +19,7 @@ class Controller;
 class CPU;
 class Memory;
 class PSG;
+class VDP;
 
 class MLMonitorBackend
 {
@@ -49,8 +50,11 @@ class MLMonitorBackend
         uint8_t debugRead8(uint16_t address) const;
         void debugWrite8(uint16_t address, uint8_t value);
 
+        // Memory functions
+        uint8_t readRAM(uint16_t address) const;
+
         // VDP Functions
-        inline VDPMode getVDPMode() const { return vdp->getMode(); }
+        VDPMode getVDPMode() const;
 
     protected:
 

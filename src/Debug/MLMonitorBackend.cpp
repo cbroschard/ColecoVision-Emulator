@@ -13,7 +13,6 @@
 #include "Debug/MLMonitorBackend.h"
 #include "Memory.h"
 #include "PSG.h"
-#include "VDP.h"
 
 MLMonitorBackend::MLMonitorBackend() :
     bus(nullptr),
@@ -65,4 +64,14 @@ uint8_t MLMonitorBackend::debugRead8(uint16_t address) const
 void MLMonitorBackend::debugWrite8(uint16_t address, uint8_t value)
 {
     cpu->debugWrite8(address, value);
+}
+
+uint8_t MLMonitorBackend::readRAM(uint16_t address) const
+{
+    return memory->read(address);
+}
+
+VDPMode MLMonitorBackend::getVDPMode() const
+{
+    return vdp->getMode();
 }
