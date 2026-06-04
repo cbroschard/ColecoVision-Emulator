@@ -71,7 +71,31 @@ uint8_t MLMonitorBackend::readRAM(uint16_t address) const
     return memory->read(address);
 }
 
+uint8_t MLMonitorBackend::getVDPRegister(uint8_t index) const
+{
+    if (!vdp)
+        return 0xFF;
+
+    return vdp->getRegister(index);
+}
+
 VDPMode MLMonitorBackend::getVDPMode() const
 {
     return vdp->getMode();
+}
+
+VDPStatusSnapshot MLMonitorBackend::getVDPStatusSnapshot() const
+{
+    if (!vdp)
+        return {};
+
+    return vdp->getStatusSnapshot();
+}
+
+uint8_t MLMonitorBackend::peekVDPVRAM(uint16_t address) const
+{
+    if (!vdp)
+        return 0xFF;
+
+    return vdp->peekVRAM(address);
 }

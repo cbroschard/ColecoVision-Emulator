@@ -54,7 +54,10 @@ class MLMonitorBackend
         uint8_t readRAM(uint16_t address) const;
 
         // VDP Functions
+        uint8_t getVDPRegister(uint8_t index) const;
         VDPMode getVDPMode() const;
+        VDPStatusSnapshot getVDPStatusSnapshot() const;
+        uint8_t peekVDPVRAM(uint16_t address) const;
 
     protected:
 

@@ -12,6 +12,21 @@
 #include <cstdint>
 #include "VideoOutput.h"
 
+struct VDPStatusSnapshot
+{
+    uint8_t statusReg;
+    uint16_t address;
+    uint8_t readBuffer;
+
+    bool controlLatch;
+    uint8_t controlFirstByte;
+
+    int cycleCounter;
+    int scanline;
+
+    bool irqAsserted;
+};
+
 enum class VDPMode
 {
     GraphicsI,
@@ -42,6 +57,10 @@ class VDP
 
         // ML Monitor
         inline VDPMode getMode() const { return mode; }
+        inline uint8_t getRegister(uint8_t index) const { return regs[index & 0x07]; }
+        inline VDPStatusSnapshot getStatusSnapshot() const { return {statusReg, address, readBuffer, controlLatch, controlFirstByte,
+                                                                     cycleCounter, scanline, irqAsserted }; }
+        inline uint8_t peekVRAM(uint16_t address) const { return vram[address & 0x3FFF]; }
 
     protected:
 
