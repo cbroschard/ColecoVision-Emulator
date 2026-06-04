@@ -14,6 +14,46 @@
 #include <functional>
 #include "Bus.h"
 
+struct Z80CPUState
+{
+    uint8_t A = 0;
+    uint8_t F = 0;
+    uint8_t B = 0;
+    uint8_t C = 0;
+    uint8_t D = 0;
+    uint8_t E = 0;
+    uint8_t H = 0;
+    uint8_t L = 0;
+
+    uint8_t A_ = 0;
+    uint8_t F_ = 0;
+    uint8_t B_ = 0;
+    uint8_t C_ = 0;
+    uint8_t D_ = 0;
+    uint8_t E_ = 0;
+    uint8_t H_ = 0;
+    uint8_t L_ = 0;
+
+    uint16_t IX = 0;
+    uint16_t IY = 0;
+    uint16_t PC = 0;
+    uint16_t SP = 0;
+
+    uint8_t I = 0;
+    uint8_t R = 0;
+
+    bool IFF1 = false;
+    bool IFF2 = false;
+    uint8_t IM = 0;
+
+    bool halted = false;
+    bool irqPending = false;
+    bool nmiPending = false;
+    bool eiDelay = false;
+
+    uint64_t cycles = 0;
+};
+
 class CPU
 {
     public:
@@ -28,6 +68,24 @@ class CPU
         void reset();
 
         int step();
+
+        // ML Monitor
+        Z80CPUState getState() const;
+        void setState(const Z80CPUState& state);
+
+        inline uint16_t getPC() const { return PC; }
+        inline void setPC(uint16_t value) { PC = value; }
+
+        uint16_t getSP() const { return SP; }
+        inline void setSP(uint16_t value) { SP = value; }
+
+        inline uint64_t getCycles() const { return cycles; }
+        inline bool isHalted() const { return halted; }
+
+        uint8_t debugRead8(uint16_t address) const;
+        void debugWrite8(uint16_t address, uint8_t value);
+
+        inline int debugStepInstruction() { return step(); }
 
     protected:
 

@@ -148,6 +148,100 @@ int CPU::step()
     return usedCycles;
 }
 
+Z80CPUState CPU::getState() const
+{
+    Z80CPUState state;
+
+    state.A = A;
+    state.F = F;
+    state.B = B;
+    state.C = C;
+    state.D = D;
+    state.E = E;
+    state.H = H;
+    state.L = L;
+
+    state.A_ = A_;
+    state.F_ = F_;
+    state.B_ = B_;
+    state.C_ = C_;
+    state.D_ = D_;
+    state.E_ = E_;
+    state.H_ = H_;
+    state.L_ = L_;
+
+    state.IX = IX;
+    state.IY = IY;
+    state.PC = PC;
+    state.SP = SP;
+
+    state.I = I;
+    state.R = R;
+
+    state.IFF1 = IFF1;
+    state.IFF2 = IFF2;
+    state.IM = IM;
+
+    state.halted = halted;
+    state.irqPending = irqPending;
+    state.nmiPending = nmiPending;
+    state.eiDelay = eiDelay;
+
+    state.cycles = cycles;
+
+    return state;
+}
+
+void CPU::setState(const Z80CPUState& state)
+{
+    A = state.A;
+    F = state.F;
+    B = state.B;
+    C = state.C;
+    D = state.D;
+    E = state.E;
+    H = state.H;
+    L = state.L;
+
+    A_ = state.A_;
+    F_ = state.F_;
+    B_ = state.B_;
+    C_ = state.C_;
+    D_ = state.D_;
+    E_ = state.E_;
+    H_ = state.H_;
+    L_ = state.L_;
+
+    IX = state.IX;
+    IY = state.IY;
+    PC = state.PC;
+    SP = state.SP;
+
+    I = state.I;
+    R = state.R;
+
+    IFF1 = state.IFF1;
+    IFF2 = state.IFF2;
+    IM = state.IM;
+
+    halted = state.halted;
+    irqPending = state.irqPending;
+    nmiPending = state.nmiPending;
+    eiDelay = state.eiDelay;
+
+    cycles = state.cycles;
+}
+
+uint8_t CPU::debugRead8(uint16_t address) const
+{
+    return read8(address);
+}
+
+void CPU::debugWrite8(uint16_t address, uint8_t value)
+{
+    write8(address, value);
+}
+
 uint8_t CPU::fetch8()
 {
     if (!bus)
