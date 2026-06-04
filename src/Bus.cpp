@@ -37,21 +37,29 @@ void Bus::writeMemory(uint16_t address, uint8_t value)
 
 uint8_t Bus::readIO(uint8_t port)
 {
-    // VDP read ports: BE = data, BF = status
-    if ((port & 0xFE) == 0xBE)
+    /*
+        ColecoVision VDP read range:
+            even ports = VDP data
+            odd ports  = VDP status
+
+        Commonly seen as $A0/$A1, mirrored through $BE/$BF.
+    */
+    if ((port & 0xE0) == 0xA0)
     {
         if (!vdp)
             return 0xFF;
 
         if (port & 0x01)
             return vdp->readStatus();
-        else
-            return vdp->readData();
+
+        return vdp->readData();
     }
 
-    // Controller read range: $E0-$FF.
-    // Even mirrored ports are controller 1.
-    // Ports with bit 1 set are controller 2.
+    /*
+        Controller read range: $E0-$FF.
+        Even mirrored ports are controller 1.
+        Ports with bit 1 set are controller 2.
+    */
     if ((port & 0xE0) == 0xE0)
     {
         if (port & 0x02)
@@ -65,8 +73,12 @@ uint8_t Bus::readIO(uint8_t port)
 
 void Bus::writeIO(uint8_t port, uint8_t value)
 {
-    // VDP write ports: BE = data, BF = control
-    if ((port & 0xFE) == 0xBE)
+    /*
+        ColecoVision VDP write range:
+            even ports = VDP data
+            odd ports  = VDP control
+    */
+    if ((port & 0xE0) == 0xA0)
     {
         if (vdp)
         {
@@ -91,12 +103,6 @@ void Bus::writeIO(uint8_t port, uint8_t value)
 
             return;
 
-        case 0xA0:
-            // PSG write range: $A0-$BF, except BE/BF handled above.
-            if (psg)
-                psg->write(value);
-            return;
-
         case 0xC0:
             // Controller joystick/left-fire mode: $C0-$DF
             if (controller1)
@@ -108,8 +114,10 @@ void Bus::writeIO(uint8_t port, uint8_t value)
             return;
 
         case 0xE0:
+            // PSG write range.
             if (psg)
                 psg->write(value);
+
             return;
 
         default:
