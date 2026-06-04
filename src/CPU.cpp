@@ -46,7 +46,7 @@ CPU::CPU() :
     halted(false),
     irqPending(false),
     nmiPending(false),
-    eiDelay(false),
+    eiDelay(0),
     cycles(0)
 {
     initializeOpcodeTable();
@@ -60,54 +60,53 @@ CPU::~CPU()
 void CPU::reset()
 {
     // Main registers
-    A       = 0;
-    F       = 0;
+    A           = 0;
+    F           = 0;
 
-    B       = 0;
-    C       = 0;
-    D       = 0;
-    E       = 0;
-    H       = 0;
-    L       = 0;
+    B           = 0;
+    C           = 0;
+    D           = 0;
+    E           = 0;
+    H           = 0;
+    L           = 0;
 
     // Shadow registers
-    A_      = 0;
-    F_      = 0;
+    A_          = 0;
+    F_          = 0;
 
-    B_      = 0;
-    C_      = 0;
-    D_      = 0;
-    E_      = 0;
-    H_      = 0;
-    L_      = 0;
+    B_          = 0;
+    C_          = 0;
+    D_          = 0;
+    E_          = 0;
+    H_          = 0;
+    L_          = 0;
 
     // Index registers
-    IX      = 0;
-    IY      = 0;
+    IX          = 0;
+    IY          = 0;
 
     // Program Counter + Stack Pointer
-    PC = 0x0000;
-    SP = 0xFFFF;
+    PC          = 0x0000;
+    SP          = 0xFFFF;
 
     // Interrupts
-    I       = 0;
-    R       = 0;
+    I           = 0;
+    R           = 0;
 
-    IFF1 = false;
-    IFF2 = false;
-    IM = 0;
+    IFF1        = false;
+    IFF2        = false;
+    IM          = 0;
 
-    halted = false;
-    irqPending = false;
-    nmiPending = false;
-    eiDelay = false;
+    halted      = false;
+    irqPending  = false;
+    nmiPending  = false;
+    eiDelay     = 0;
 
     cycles = 0;
 }
 
 int CPU::step()
 {
-    // NMI has priority and ignores IFF1.
     if (nmiPending)
     {
         const int usedCycles = serviceNMI();
@@ -115,8 +114,7 @@ int CPU::step()
         return usedCycles;
     }
 
-    // Maskable IRQ only accepted when enabled.
-    if (irqPending && IFF1 && !eiDelay)
+    if (irqPending && IFF1 && eiDelay == 0)
     {
         const int usedCycles = serviceIRQ();
         cycles += usedCycles;
@@ -129,18 +127,18 @@ int CPU::step()
         return 4;
     }
 
-    const bool wasEIDelayed = eiDelay;
-
     const uint8_t opcode = fetch8();
     const int usedCycles = opcodeTable[opcode]();
 
-    // If EI was pending before this instruction, enable interrupts now.
-    // But do not immediately enable during the EI instruction itself.
-    if (wasEIDelayed && opcode != 0xFB)
+    if (eiDelay > 0)
     {
-        IFF1 = true;
-        IFF2 = true;
-        eiDelay = false;
+        eiDelay--;
+
+        if (eiDelay == 0)
+        {
+            IFF1 = true;
+            IFF2 = true;
+        }
     }
 
     cycles += usedCycles;
@@ -269,8 +267,9 @@ int CPU::serviceIRQ()
     halted = false;
 
     // Maskable interrupt accepted: disable further maskable interrupts.
-    IFF1 = false;
-    IFF2 = false;
+    IFF1    = false;
+    IFF2    = false;
+    eiDelay = 0;
 
     // Push current PC just like a CALL.
     push16(PC);
@@ -900,6 +899,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0xCE] = [this]() { return opADCImm(); };  // ADC A,n
     opcodeTable[0xD6] = [this]() { return opSUBImm(); };  // SUB n
     opcodeTable[0xE6] = [this]() { return opANDImm(); };  // AND n
+    opcodeTable[0xEE] = [this]() { return opXORImm(); };  // XOR n
     opcodeTable[0xF6] = [this]() { return opORImm(); };   // OR n
 
     // Calls / returns
@@ -1083,7 +1083,7 @@ int CPU::opDI()
 int CPU::opEI()
 {
     // Interrupts become enabled after the next instruction.
-    eiDelay = true;
+    eiDelay = 2;
 
     return 4;
 }
@@ -1167,6 +1167,15 @@ int CPU::opANDImm()
     const uint8_t value = fetch8();
 
     andA(value);
+
+    return 7;
+}
+
+int CPU::opXORImm()
+{
+    const uint8_t value = fetch8();
+
+    xorA(value);
 
     return 7;
 }
@@ -2810,6 +2819,47 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+                case 0xA1: // CPI
+        {
+            const uint16_t hl = getHL();
+            const uint16_t bc = getBC();
+
+            const uint8_t value = read8(hl);
+            const uint8_t result = static_cast<uint8_t>(A - value);
+
+            const bool halfBorrow = (A & 0x0F) < (value & 0x0F);
+            const uint16_t newBC = static_cast<uint16_t>(bc - 1);
+
+            setHL(static_cast<uint16_t>(hl + 1));
+            setBC(newBC);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (result & 0x80)
+                F |= FLAG_S;
+
+            if (result == 0)
+                F |= FLAG_Z;
+
+            if (halfBorrow)
+                F |= FLAG_H;
+
+            if (newBC != 0)
+                F |= FLAG_PV;
+
+            F |= FLAG_N;
+
+            // Undocumented flags for CPI/CPD use result adjusted by H.
+            const uint8_t adjusted =
+                static_cast<uint8_t>(result - (halfBorrow ? 1 : 0));
+
+            F |= adjusted & (FLAG_Y | FLAG_X);
+
+            return ED_CYCLE_COUNTS[opcode]; // 16
+        }
+
         case 0xA2: // INI
         {
             const uint16_t hl = getHL();
@@ -2870,6 +2920,45 @@ int CPU::executeED()
 
             return ED_CYCLE_COUNTS[opcode];
         }
+                case 0xA9: // CPD
+        {
+            const uint16_t hl = getHL();
+            const uint16_t bc = getBC();
+
+            const uint8_t value = read8(hl);
+            const uint8_t result = static_cast<uint8_t>(A - value);
+
+            const bool halfBorrow = (A & 0x0F) < (value & 0x0F);
+            const uint16_t newBC = static_cast<uint16_t>(bc - 1);
+
+            setHL(static_cast<uint16_t>(hl - 1));
+            setBC(newBC);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (result & 0x80)
+                F |= FLAG_S;
+
+            if (result == 0)
+                F |= FLAG_Z;
+
+            if (halfBorrow)
+                F |= FLAG_H;
+
+            if (newBC != 0)
+                F |= FLAG_PV;
+
+            F |= FLAG_N;
+
+            const uint8_t adjusted =
+                static_cast<uint8_t>(result - (halfBorrow ? 1 : 0));
+
+            F |= adjusted & (FLAG_Y | FLAG_X);
+
+            return ED_CYCLE_COUNTS[opcode]; // 16
+        }
 
         case 0xB0: // LDIR
         {
@@ -2900,6 +2989,52 @@ int CPU::executeED()
             if (newBC != 0)
             {
                 F |= FLAG_PV;
+                PC = static_cast<uint16_t>(PC - 2);
+                return 21;
+            }
+
+            return 16;
+        }
+
+        case 0xB1: // CPIR
+        {
+            const uint16_t hl = getHL();
+            const uint16_t bc = getBC();
+
+            const uint8_t value = read8(hl);
+            const uint8_t result = static_cast<uint8_t>(A - value);
+
+            const bool halfBorrow = (A & 0x0F) < (value & 0x0F);
+            const uint16_t newBC = static_cast<uint16_t>(bc - 1);
+
+            setHL(static_cast<uint16_t>(hl + 1));
+            setBC(newBC);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (result & 0x80)
+                F |= FLAG_S;
+
+            if (result == 0)
+                F |= FLAG_Z;
+
+            if (halfBorrow)
+                F |= FLAG_H;
+
+            if (newBC != 0)
+                F |= FLAG_PV;
+
+            F |= FLAG_N;
+
+            const uint8_t adjusted =
+                static_cast<uint8_t>(result - (halfBorrow ? 1 : 0));
+
+            F |= adjusted & (FLAG_Y | FLAG_X);
+
+            if (result != 0 && newBC != 0)
+            {
                 PC = static_cast<uint16_t>(PC - 2);
                 return 21;
             }
@@ -2942,6 +3077,52 @@ int CPU::executeED()
                 // Repeat this ED B8 instruction.
                 PC = static_cast<uint16_t>(PC - 2);
 
+                return 21;
+            }
+
+            return 16;
+        }
+
+        case 0xB9: // CPDR
+        {
+            const uint16_t hl = getHL();
+            const uint16_t bc = getBC();
+
+            const uint8_t value = read8(hl);
+            const uint8_t result = static_cast<uint8_t>(A - value);
+
+            const bool halfBorrow = (A & 0x0F) < (value & 0x0F);
+            const uint16_t newBC = static_cast<uint16_t>(bc - 1);
+
+            setHL(static_cast<uint16_t>(hl - 1));
+            setBC(newBC);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (result & 0x80)
+                F |= FLAG_S;
+
+            if (result == 0)
+                F |= FLAG_Z;
+
+            if (halfBorrow)
+                F |= FLAG_H;
+
+            if (newBC != 0)
+                F |= FLAG_PV;
+
+            F |= FLAG_N;
+
+            const uint8_t adjusted =
+                static_cast<uint8_t>(result - (halfBorrow ? 1 : 0));
+
+            F |= adjusted & (FLAG_Y | FLAG_X);
+
+            if (result != 0 && newBC != 0)
+            {
+                PC = static_cast<uint16_t>(PC - 2);
                 return 21;
             }
 

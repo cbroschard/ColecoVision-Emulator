@@ -49,7 +49,7 @@ struct Z80CPUState
     bool halted = false;
     bool irqPending = false;
     bool nmiPending = false;
-    bool eiDelay = false;
+    uint8_t eiDelay = 0;
 
     uint64_t cycles = 0;
 };
@@ -351,7 +351,7 @@ class CPU
         bool halted;
         bool irqPending;
         bool nmiPending;
-        bool eiDelay;
+        uint8_t eiDelay;
 
         // Timing
         uint64_t cycles;
@@ -408,6 +408,7 @@ class CPU
         int opRLD();
 
         int opANDImm();
+        int opXORImm();
         int opORImm();
         int opADDImm();
         int opADCImm();
