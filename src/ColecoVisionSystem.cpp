@@ -117,12 +117,23 @@ void ColecoVisionSystem::run()
 
         while (frameCycles < CYCLES_PER_FRAME)
         {
+            // Present current IRQ line state before the CPU decides
+            // whether to service an interrupt.
+            if (vdp->isIRQAsserted())
+                irqLine->raiseIRQ(IRQSource::VDP);
+            else
+                irqLine->clearIRQ(IRQSource::VDP);
+
+            cpu->setIRQ(irqLine->isAsserted());
+
             const int cpuCycles = cpu->step();
 
             frameCycles += cpuCycles;
 
             vdp->tick(cpuCycles);
 
+            // VDP may have entered VBlank during this CPU instruction.
+            // Update the line immediately for the next instruction.
             if (vdp->isIRQAsserted())
                 irqLine->raiseIRQ(IRQSource::VDP);
             else
