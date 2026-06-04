@@ -10,8 +10,32 @@
 
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
+
+struct CartridgeInfo
+{
+    bool loaded = false;
+
+    std::string fileName;
+
+    size_t romSizeBytes = 0;
+    size_t romSizeKB = 0;
+
+    uint8_t signature0 = 0x00;
+    uint8_t signature1 = 0x00;
+    bool validColecoSignature = false;
+
+    uint16_t entryPoint = 0x0000;
+    bool hasEntryPoint = false;
+
+    uint32_t crc32 = 0x00000000;
+
+    std::string mappingType;
+    std::string mirrorDescription;
+};
 
 class Cartridge
 {
@@ -21,19 +45,24 @@ class Cartridge
 
         void reset();
 
-        bool loadROM(const std::string& rom);
+        bool loadROM(const std::string& ROM);
 
         uint8_t read(uint16_t offset) const;
 
         inline bool isCartridgeLoaded() const { return cartLoaded; }
 
-    protected:
+        CartridgeInfo getInfo() const;
+
+        size_t getROMSize() const;
+        uint8_t peekROM(size_t offset) const;
 
     private:
         std::vector<uint8_t> rom;
-
         bool cartLoaded;
 
+        std::string romFileName;
+
+        uint32_t calculateCRC32() const;
 };
 
-#endif // CARTRIDGE_H
+#endif
