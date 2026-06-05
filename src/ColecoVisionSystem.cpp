@@ -126,6 +126,8 @@ void ColecoVisionSystem::run()
 
             cpu->setIRQ(irqLine->isAsserted());
 
+
+
             const int cpuCycles = cpu->step();
 
             frameCycles += cpuCycles;
@@ -140,8 +142,6 @@ void ColecoVisionSystem::run()
                 irqLine->clearIRQ(IRQSource::VDP);
 
             cpu->setIRQ(irqLine->isAsserted());
-
-            // psg->tick(cpuCycles);
         }
 
         videoOutput->clear();
