@@ -70,7 +70,7 @@ uint8_t VDP::readStatus()
 {
     uint8_t result = statusReg;
 
-    statusReg &= ~0x80;
+    statusReg = 0x00;
     irqAsserted = false;
     controlLatch = false;
 
