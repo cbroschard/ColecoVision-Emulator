@@ -1003,9 +1003,11 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0xCA] = [this]() { return opJPZImm16(); };  // JP Z,nn
     opcodeTable[0xD2] = [this]() { return opJPNCImm16(); }; // JP NC,nn
     opcodeTable[0xDA] = [this]() { return opJPCImm16(); };  // JP C,nn
-    opcodeTable[0xE9] = [this]() { return opJPHL(); }; // JP (HL)
+    opcodeTable[0xE2] = [this]() { return opJPPOImm16(); }; // JP PO,nn
+    opcodeTable[0xEA] = [this]() { return opJPPEImm16(); }; // JP PE,nn
+    opcodeTable[0xE9] = [this]() { return opJPHL(); };      // JP (HL)
     opcodeTable[0xF2] = [this]() { return opJPPImm16(); };  // JP P,nn
-    opcodeTable[0xFA] = [this]() { return opJPMImm16(); };   // JP M,nn
+    opcodeTable[0xFA] = [this]() { return opJPMImm16(); };  // JP M,nn
 
     // I/O
     opcodeTable[0xD3] = [this]() { return opOUTImmA(); }; // OUT (n),A
@@ -1880,6 +1882,26 @@ int CPU::opJPCImm16()
     return 10;
 }
 
+int CPU::opJPPOImm16()
+{
+    const uint16_t address = fetch16();
+
+    if ((F & FLAG_PV) == 0)
+        PC = address;
+
+    return 10;
+}
+
+int CPU::opJPPEImm16()
+{
+    const uint16_t address = fetch16();
+
+    if (F & FLAG_PV)
+        PC = address;
+
+    return 10;
+}
+
 int CPU::opOUTImmA()
 {
     const uint8_t port = fetch8();
@@ -2749,6 +2771,12 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x47: // LD I,A
+        {
+            I = A;
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x48: // IN C,(C)
         {
             C = readIO(C);
@@ -2782,6 +2810,12 @@ int CPU::executeED()
             // No Z80 daisy-chain interrupt controller behavior needed here.
             IFF1 = IFF2;
 
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x4F: // LD R,A
+        {
+            R = A;
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2846,6 +2880,28 @@ int CPU::executeED()
         case 0x56: // IM 1
         {
             IM = 1;
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+                case 0x57: // LD A,I
+        {
+            A = I;
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (A & 0x80)
+                F |= FLAG_S;
+
+            if (A == 0)
+                F |= FLAG_Z;
+
+            if (IFF2)
+                F |= FLAG_PV;
+
+            F |= A & (FLAG_Y | FLAG_X);
+
             return ED_CYCLE_COUNTS[opcode];
         }
 

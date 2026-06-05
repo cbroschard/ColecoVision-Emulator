@@ -513,6 +513,8 @@ class CPU
         int opJPZImm16();
         int opJPNCImm16();
         int opJPCImm16();
+        int opJPPOImm16();
+        int opJPPEImm16();
 
         int opOUTImmA();
         int opINAImm();
