@@ -3596,10 +3596,31 @@ int CPU::executeFD()
             return FD_CYCLE_COUNTS[opcode];
         }
 
+        case 0x96: // SUB (IY+d)
+        {
+            const int8_t d = static_cast<int8_t>(fetch8());
+            subA(read8(static_cast<uint16_t>(IY + d)));
+            return FD_CYCLE_COUNTS[opcode];
+        }
+
         case 0x9E: // SBC A,(IY+d)
         {
             const int8_t d = static_cast<int8_t>(fetch8());
             sbcA(read8(static_cast<uint16_t>(IY + d)));
+            return FD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xA6: // AND (IY+d)
+        {
+            const int8_t d = static_cast<int8_t>(fetch8());
+            andA(read8(static_cast<uint16_t>(IY + d)));
+            return FD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xAE: // XOR (IY+d)
+        {
+            const int8_t d = static_cast<int8_t>(fetch8());
+            xorA(read8(static_cast<uint16_t>(IY + d)));
             return FD_CYCLE_COUNTS[opcode];
         }
 
