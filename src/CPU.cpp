@@ -918,6 +918,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0xC6] = [this]() { return opADDImm(); };  // ADD A,n
     opcodeTable[0xCE] = [this]() { return opADCImm(); };  // ADC A,n
     opcodeTable[0xD6] = [this]() { return opSUBImm(); };  // SUB n
+    opcodeTable[0xDE] = [this]() { return opSBCImm(); };  // SBC A,n
     opcodeTable[0xE6] = [this]() { return opANDImm(); };  // AND n
     opcodeTable[0xEE] = [this]() { return opXORImm(); };  // XOR n
     opcodeTable[0xF6] = [this]() { return opORImm(); };   // OR n
@@ -933,7 +934,9 @@ void CPU::initializeOpcodeTable()
 
     opcodeTable[0xC4] = [this]() { return opCALLNZImm16(); }; // CALL NZ,nn
     opcodeTable[0xCC] = [this]() { return opCALLZImm16(); };  // CALL Z,nn
+    opcodeTable[0xD4] = [this]() { return opCALLNCImm16(); }; // CALL NC,nn
     opcodeTable[0xCD] = [this]() { return opCALLImm16(); };   // CALL nn
+    opcodeTable[0xDC] = [this]() { return opCALLCImm16(); };  // CALL C,nn
 
     // Stack
     opcodeTable[0xC5] = [this]() { return opPUSHBC(); }; // PUSH BC
@@ -1234,11 +1237,48 @@ int CPU::opSUBImm()
     return 7;
 }
 
+int CPU::opSBCImm()
+{
+    const uint8_t value = fetch8();
+
+    sbcA(value);
+
+    return 7;
+}
+
 int CPU::opCALLNZImm16()
 {
     const uint16_t address = fetch16();
 
     if ((F & FLAG_Z) == 0)
+    {
+        push16(PC);
+        PC = address;
+        return 17;
+    }
+
+    return 10;
+}
+
+int CPU::opCALLNCImm16()
+{
+    const uint16_t address = fetch16();
+
+    if ((F & FLAG_C) == 0)
+    {
+        push16(PC);
+        PC = address;
+        return 17;
+    }
+
+    return 10;
+}
+
+int CPU::opCALLCImm16()
+{
+    const uint16_t address = fetch16();
+
+    if (F & FLAG_C)
     {
         push16(PC);
         PC = address;

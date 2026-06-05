@@ -416,6 +416,7 @@ class CPU
         int opADDImm();
         int opADCImm();
         int opSUBImm();
+        int opSBCImm();
 
         int opRET();
         int opRETZ();
@@ -428,6 +429,8 @@ class CPU
         int opCALLImm16();
         int opCALLNZImm16();
         int opCALLZImm16();
+        int opCALLNCImm16();
+        int opCALLCImm16();
 
         int opPUSHBC();
         int opPUSHDE();
