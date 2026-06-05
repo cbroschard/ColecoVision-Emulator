@@ -69,6 +69,8 @@ class ColecoVisionSystem
 
         std::string biosPath;
 
+        bool lastVDPInterrupt;
+
         void wireUp();};
 
 #endif // COLECOVISIONSYSTEM_H

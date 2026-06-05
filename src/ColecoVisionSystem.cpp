@@ -8,7 +8,8 @@
 #include <stdexcept>
 #include "ColecoVisionSystem.h"
 
-ColecoVisionSystem::ColecoVisionSystem()
+ColecoVisionSystem::ColecoVisionSystem() :
+    lastVDPInterrupt(false)
 {
     audioOutput = std::make_unique<AudioOutput>();
     bus = std::make_unique<Bus>();
@@ -46,6 +47,8 @@ void ColecoVisionSystem::reset()
 
     // Reset controllers
     inputManager->reset();
+
+    lastVDPInterrupt = false;
 }
 
 void ColecoVisionSystem::run()
@@ -117,16 +120,9 @@ void ColecoVisionSystem::run()
 
         while (frameCycles < CYCLES_PER_FRAME)
         {
-            // Present current IRQ line state before the CPU decides
-            // whether to service an interrupt.
-            if (vdp->isIRQAsserted())
-                irqLine->raiseIRQ(IRQSource::VDP);
-            else
-                irqLine->clearIRQ(IRQSource::VDP);
-
+            // Maskable IRQ line is only for expansion/future devices.
+            // Stock ColecoVision VDP interrupt does NOT go here.
             cpu->setIRQ(irqLine->isAsserted());
-
-
 
             const int cpuCycles = cpu->step();
 
@@ -134,14 +130,21 @@ void ColecoVisionSystem::run()
 
             vdp->tick(cpuCycles);
 
-            // VDP may have entered VBlank during this CPU instruction.
-            // Update the line immediately for the next instruction.
-            if (vdp->isIRQAsserted())
-                irqLine->raiseIRQ(IRQSource::VDP);
-            else
-                irqLine->clearIRQ(IRQSource::VDP);
+            /*
+                ColecoVision VDP interrupt is wired to Z80 NMI.
 
-            cpu->setIRQ(irqLine->isAsserted());
+                Use rising edge only. The VDP IRQ/status latch may stay asserted
+                until the NMI handler reads VDP status, but NMI itself should not
+                retrigger every CPU instruction while the line remains asserted.
+            */
+            const bool vdpInterrupt = vdp->isIRQAsserted();
+
+            if (vdpInterrupt && !lastVDPInterrupt)
+            {
+                cpu->triggerNMI();
+            }
+
+            lastVDPInterrupt = vdpInterrupt;
         }
 
         videoOutput->clear();
