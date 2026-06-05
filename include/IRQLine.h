@@ -13,7 +13,6 @@
 enum class IRQSource : uint8_t
 {
     VDP = 0,
-    PSG,
     Expansion,
     Count
 };
