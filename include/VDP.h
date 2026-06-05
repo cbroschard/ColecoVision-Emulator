@@ -99,6 +99,7 @@ class VDP
         inline bool isDisplayEnabled() const { return (regs[1] & 0x40) != 0; }
 
         void updateModeFromRegisters();
+        void updateIRQState();
 
         void clearToBackdrop(VideoOutput& output);
 };

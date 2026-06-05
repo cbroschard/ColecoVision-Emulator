@@ -52,11 +52,7 @@ void VDP::tick(int cpuCycles)
         if (scanline == VBLANK_START_LINE)
         {
             statusReg |= 0x80; // VBlank flag
-
-            if (regs[1] & 0x20)
-            {
-                irqAsserted = true;
-            }
+            updateIRQState();
         }
 
         if (scanline >= SCANLINES_PER_FRAME)
@@ -68,11 +64,15 @@ void VDP::tick(int cpuCycles)
 
 uint8_t VDP::readStatus()
 {
-    uint8_t result = statusReg;
+    const uint8_t result = statusReg;
 
+    // Reading status clears VBlank, 5th sprite, collision, and IRQ latch.
     statusReg = 0x00;
-    irqAsserted = false;
+
+    // Reading status also resets the control latch.
     controlLatch = false;
+
+    updateIRQState();
 
     return result;
 }
@@ -131,7 +131,14 @@ void VDP::writeControl(uint8_t value)
                 // TMS9918 has registers 0-7.
                 const uint8_t reg = second & 0x07;
                 regs[reg] = first;
+
                 updateModeFromRegisters();
+
+                if (reg == 1)
+                {
+                    updateIRQState();
+                }
+
                 break;
             }
             break;
@@ -528,6 +535,14 @@ void VDP::updateModeFromRegisters()
         // Unsupported mixed modes for now.
         mode = VDPMode::GraphicsI;
     }
+}
+
+void VDP::updateIRQState()
+{
+    const bool vblankPending = (statusReg & 0x80) != 0;
+    const bool irqEnabled = (regs[1] & 0x20) != 0;
+
+    irqAsserted = vblankPending && irqEnabled;
 }
 
 void VDP::clearToBackdrop(VideoOutput& output)
