@@ -375,6 +375,7 @@ class CPU
         // Opcode helpers
         uint8_t inc8(uint8_t value);
         uint8_t dec8(uint8_t value);
+
         void andA(uint8_t value);
         void orA(uint8_t value);
         void addA(uint8_t value);
@@ -383,6 +384,8 @@ class CPU
         void subA(uint8_t value);
         void sbcA(uint8_t value);
         void xorA(uint8_t value);
+
+        void setInFlags(uint8_t value);
 
         inline uint16_t getBC() const { return static_cast<uint16_t>((B << 8) | C); }
         inline uint16_t getDE() const { return static_cast<uint16_t>((D << 8) | E); }

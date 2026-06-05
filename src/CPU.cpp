@@ -627,6 +627,26 @@ void CPU::xorA(uint8_t value)
     F |= A & (FLAG_Y | FLAG_X);
 }
 
+void CPU::setInFlags(uint8_t value)
+{
+    const uint8_t oldCarry = F & FLAG_C;
+
+    F = oldCarry;
+
+    if (value & 0x80)
+        F |= FLAG_S;
+
+    if (value == 0)
+        F |= FLAG_Z;
+
+    if (parityEven(value))
+        F |= FLAG_PV;
+
+    F |= value & (FLAG_Y | FLAG_X);
+
+    // H and N are reset.
+}
+
 void CPU::addHL(uint16_t value)
 {
     const uint16_t oldHL = getHL();
@@ -2586,6 +2606,19 @@ int CPU::executeED()
 
     switch (opcode)
     {
+        case 0x40: // IN B,(C)
+        {
+            B = readIO(C);
+            setInFlags(B);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x41: // OUT (C),B
+        {
+            writeIO(C, B);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x42: // SBC HL,BC
         {
             const uint32_t carry = (F & FLAG_C) ? 1 : 0;
@@ -2624,8 +2657,10 @@ int CPU::executeED()
         case 0x43: // LD (nn),BC
         {
             const uint16_t address = fetch16();
+
             write8(address, C);
             write8(static_cast<uint16_t>(address + 1), B);
+
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2660,9 +2695,30 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x45: // RETN
+        {
+            PC = pop16();
+            IFF1 = IFF2;
+
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x46: // IM 0
         {
             IM = 0;
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x48: // IN C,(C)
+        {
+            C = readIO(C);
+            setInFlags(C);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x49: // OUT (C),C
+        {
+            writeIO(C, C);
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2675,6 +2731,30 @@ int CPU::executeED()
 
             setBC(static_cast<uint16_t>(lo | (hi << 8)));
 
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x4D: // RETI
+        {
+            PC = pop16();
+
+            // Good enough for ColecoVision.
+            // No Z80 daisy-chain interrupt controller behavior needed here.
+            IFF1 = IFF2;
+
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x50: // IN D,(C)
+        {
+            D = readIO(C);
+            setInFlags(D);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x51: // OUT (C),D
+        {
+            writeIO(C, D);
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2716,15 +2796,30 @@ int CPU::executeED()
         case 0x53: // LD (nn),DE
         {
             const uint16_t address = fetch16();
+
             write8(address, E);
             write8(static_cast<uint16_t>(address + 1), D);
+
             return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0x56: // IM 1
         {
             IM = 1;
-            return ED_CYCLE_COUNTS[opcode]; // 8
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x58: // IN E,(C)
+        {
+            E = readIO(C);
+            setInFlags(E);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x59: // OUT (C),E
+        {
+            writeIO(C, E);
+            return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0x5B: // LD DE,(nn)
@@ -2767,17 +2862,45 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x60: // IN H,(C)
+        {
+            H = readIO(C);
+            setInFlags(H);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x61: // OUT (C),H
+        {
+            writeIO(C, H);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x63: // LD (nn),HL
         {
             const uint16_t address = fetch16();
+
             write8(address, L);
             write8(static_cast<uint16_t>(address + 1), H);
+
             return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0x67: // RRD
         {
             return opRRD();
+        }
+
+        case 0x68: // IN L,(C)
+        {
+            L = readIO(C);
+            setInFlags(L);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x69: // OUT (C),L
+        {
+            writeIO(C, L);
+            return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0x6B: // LD HL,(nn)
@@ -2797,6 +2920,20 @@ int CPU::executeED()
             return opRLD();
         }
 
+        case 0x70: // IN (C), flags only
+        {
+            const uint8_t value = readIO(C);
+            setInFlags(value);
+
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x71: // OUT (C),0
+        {
+            writeIO(C, 0x00);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x73: // LD (nn),SP
         {
             const uint16_t address = fetch16();
@@ -2804,6 +2941,19 @@ int CPU::executeED()
             write8(address, static_cast<uint8_t>(SP & 0x00FF));
             write8(static_cast<uint16_t>(address + 1), static_cast<uint8_t>(SP >> 8));
 
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x78: // IN A,(C)
+        {
+            A = readIO(C);
+            setInFlags(A);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x79: // OUT (C),A
+        {
+            writeIO(C, A);
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2819,7 +2969,7 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
-                case 0xA1: // CPI
+        case 0xA1: // CPI
         {
             const uint16_t hl = getHL();
             const uint16_t bc = getBC();
@@ -2851,57 +3001,24 @@ int CPU::executeED()
 
             F |= FLAG_N;
 
-            // Undocumented flags for CPI/CPD use result adjusted by H.
             const uint8_t adjusted =
                 static_cast<uint8_t>(result - (halfBorrow ? 1 : 0));
 
             F |= adjusted & (FLAG_Y | FLAG_X);
 
-            return ED_CYCLE_COUNTS[opcode]; // 16
+            return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0xA2: // INI
         {
             const uint16_t hl = getHL();
 
-            // IN (C)
             const uint8_t value = readIO(C);
 
-            // (HL) = input value
             write8(hl, value);
 
-            // HL++
             setHL(static_cast<uint16_t>(hl + 1));
 
-            // B--
-            B = static_cast<uint8_t>(B - 1);
-
-            const uint8_t oldCarry = F & FLAG_C;
-
-            F = oldCarry;
-
-            if (B == 0)
-                F |= FLAG_Z;
-
-            if (value & 0x80)
-                F |= FLAG_N;
-
-            // Useful approximation for undocumented flags.f
-            if (B & 0x80) F |= FLAG_S;
-            if (B & 0x20) F |= FLAG_Y;
-            if (B & 0x08) F |= FLAG_X;
-
-            return ED_CYCLE_COUNTS[opcode]; // 16
-        }
-
-        case 0xA3: // OUTI
-        {
-            const uint16_t hl = getHL();
-            const uint8_t value = read8(hl);
-
-            writeIO(C, value);
-
-            setHL(static_cast<uint16_t>(hl + 1));
             B = static_cast<uint8_t>(B - 1);
 
             const uint8_t oldCarry = F & FLAG_C;
@@ -2920,7 +3037,36 @@ int CPU::executeED()
 
             return ED_CYCLE_COUNTS[opcode];
         }
-                case 0xA9: // CPD
+
+        case 0xA3: // OUTI
+        {
+            const uint16_t hl = getHL();
+            const uint8_t value = read8(hl);
+
+            writeIO(C, value);
+
+            setHL(static_cast<uint16_t>(hl + 1));
+
+            B = static_cast<uint8_t>(B - 1);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (B == 0)
+                F |= FLAG_Z;
+
+            if (value & 0x80)
+                F |= FLAG_N;
+
+            if (B & 0x80) F |= FLAG_S;
+            if (B & 0x20) F |= FLAG_Y;
+            if (B & 0x08) F |= FLAG_X;
+
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xA9: // CPD
         {
             const uint16_t hl = getHL();
             const uint16_t bc = getBC();
@@ -2957,7 +3103,7 @@ int CPU::executeED()
 
             F |= adjusted & (FLAG_Y | FLAG_X);
 
-            return ED_CYCLE_COUNTS[opcode]; // 16
+            return ED_CYCLE_COUNTS[opcode];
         }
 
         case 0xB0: // LDIR
@@ -3062,8 +3208,6 @@ int CPU::executeED()
 
             F = oldCarry;
 
-            // H and N are reset for LDDR.
-            // P/V set while BC is not zero.
             if (sum & 0x08)
                 F |= FLAG_X;
 
@@ -3074,7 +3218,6 @@ int CPU::executeED()
             {
                 F |= FLAG_PV;
 
-                // Repeat this ED B8 instruction.
                 PC = static_cast<uint16_t>(PC - 2);
 
                 return 21;
