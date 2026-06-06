@@ -356,6 +356,7 @@ class CPU
         // Timing
         uint64_t cycles;
 
+        uint8_t fetchOpcode();
         uint8_t fetch8();
         uint16_t fetch16();
 
@@ -375,6 +376,9 @@ class CPU
         // Opcode helpers
         uint8_t inc8(uint8_t value);
         uint8_t dec8(uint8_t value);
+
+        // Increment R register
+        inline void incrementRefreshRegister() { R = static_cast<uint8_t>((R & 0x80) | ((R + 1) & 0x7F)); }
 
         void andA(uint8_t value);
         void orA(uint8_t value);

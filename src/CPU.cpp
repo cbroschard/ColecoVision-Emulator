@@ -127,7 +127,7 @@ int CPU::step()
         return 4;
     }
 
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
     const int usedCycles = opcodeTable[opcode]();
 
     if (eiDelay > 0)
@@ -238,6 +238,22 @@ uint8_t CPU::debugRead8(uint16_t address) const
 void CPU::debugWrite8(uint16_t address, uint8_t value)
 {
     write8(address, value);
+}
+
+uint8_t CPU::fetchOpcode()
+{
+    if (!bus)
+    {
+        halted = true;
+        return 0xFF;
+    }
+
+    const uint8_t value = bus->readMemory(PC);
+    PC++;
+
+    incrementRefreshRegister();
+
+    return value;
 }
 
 uint8_t CPU::fetch8()
@@ -2330,7 +2346,7 @@ int CPU::opRST(uint16_t address)
 int CPU::executeCB()
 {
     const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
     const uint16_t opcodePC = static_cast<uint16_t>(PC - 1);
 
     // CB 80-BF: RES b,r
@@ -2516,7 +2532,7 @@ int CPU::executeCB()
 int CPU::executeDD()
 {
     const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
     const uint16_t opcodePC = static_cast<uint16_t>(PC - 1);
 
     switch (opcode)
@@ -2846,7 +2862,7 @@ int CPU::executeDD()
 int CPU::executeED()
 {
     const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
     const uint16_t opcodePC = static_cast<uint16_t>(PC - 1);
 
     switch (opcode)
@@ -3631,7 +3647,7 @@ int CPU::executeED()
 int CPU::executeFD()
 {
     const uint16_t prefixPC = static_cast<uint16_t>(PC - 1);
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
     const uint16_t opcodePC = static_cast<uint16_t>(PC - 1);
 
     switch (opcode)
@@ -3939,7 +3955,7 @@ int CPU::executeIndexedCB(uint16_t indexBase, const std::array<uint8_t, 256>& cy
 {
     // DD CB d op  or  FD CB d op
     const int8_t d = static_cast<int8_t>(fetch8());
-    const uint8_t opcode = fetch8();
+    const uint8_t opcode = fetchOpcode();
 
     const uint16_t address = static_cast<uint16_t>(indexBase + d);
 
