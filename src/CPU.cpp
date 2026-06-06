@@ -675,6 +675,46 @@ void CPU::addHL(uint16_t value)
     setHL(result16);
 }
 
+void CPU::sbcHL(uint16_t value)
+{
+    const uint32_t carry = (F & FLAG_C) ? 1 : 0;
+    const uint16_t oldHL = getHL();
+
+    const uint32_t result =
+        static_cast<uint32_t>(oldHL) - value - carry;
+
+    const uint16_t result16 =
+        static_cast<uint16_t>(result & 0xFFFF);
+
+    F = 0;
+
+    if (result16 & 0x8000)
+        F |= FLAG_S;
+
+    if (result16 == 0)
+        F |= FLAG_Z;
+
+    // Half borrow from bit 12.
+    if ((oldHL & 0x0FFF) < ((value & 0x0FFF) + carry))
+        F |= FLAG_H;
+
+    // Overflow for 16-bit subtraction.
+    if (((oldHL ^ value) & (oldHL ^ result16) & 0x8000) != 0)
+        F |= FLAG_PV;
+
+    // SBC is subtraction.
+    F |= FLAG_N;
+
+    // Borrow out of bit 15.
+    if (result & 0x10000)
+        F |= FLAG_C;
+
+    // Undocumented flags from high byte of result.
+    F |= static_cast<uint8_t>((result16 >> 8) & (FLAG_Y | FLAG_X));
+
+    setHL(result16);
+}
+
 void CPU::subA(uint8_t value)
 {
     const uint16_t result = static_cast<uint16_t>(A) - value;
@@ -2515,6 +2555,12 @@ int CPU::executeDD()
             return DD_CYCLE_COUNTS[opcode];
         }
 
+        case 0x29: // ADD IX,IX
+        {
+            IX = add16Index(IX, IX);
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
         case 0x2A: // LD IX,(nn)
         {
             const uint16_t address = fetch16();
@@ -2566,6 +2612,12 @@ int CPU::executeDD()
 
             write8(static_cast<uint16_t>(IX + d), value);
 
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x39: // ADD IX,SP
+        {
+            IX = add16Index(IX, SP);
             return DD_CYCLE_COUNTS[opcode];
         }
 
@@ -2702,6 +2754,18 @@ int CPU::executeDD()
             return DD_CYCLE_COUNTS[opcode];
         }
 
+        case 0xAE: // XOR (IX+d)
+        {
+            const int8_t displacement = static_cast<int8_t>(fetch8());
+
+            const uint16_t address =
+                static_cast<uint16_t>(IX + displacement);
+
+            xorA(read8(address));
+
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
         case 0xB6: // OR (IX+d)
         {
             const int8_t d = static_cast<int8_t>(fetch8());
@@ -2727,6 +2791,22 @@ int CPU::executeDD()
             return DD_CYCLE_COUNTS[opcode];
         }
 
+        case 0xE3: // EX (SP),IX
+        {
+            const uint8_t lo = read8(SP);
+            const uint8_t hi = read8(static_cast<uint16_t>(SP + 1));
+
+            const uint16_t value =
+                static_cast<uint16_t>(lo | (hi << 8));
+
+            write8(SP, static_cast<uint8_t>(IX & 0xFF));
+            write8(static_cast<uint16_t>(SP + 1), static_cast<uint8_t>(IX >> 8));
+
+            IX = value;
+
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
         case 0xE5: // PUSH IX
         {
             push16(IX);
@@ -2736,6 +2816,12 @@ int CPU::executeDD()
         case 0xE9: // JP (IX)
         {
             PC = IX;
+            return DD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xF9: // LD SP,IX
+        {
+            SP = IX;
             return DD_CYCLE_COUNTS[opcode];
         }
 
@@ -2780,36 +2866,7 @@ int CPU::executeED()
 
         case 0x42: // SBC HL,BC
         {
-            const uint32_t carry = (F & FLAG_C) ? 1 : 0;
-            const uint16_t oldHL = getHL();
-            const uint16_t value = getBC();
-
-            const uint32_t result = static_cast<uint32_t>(oldHL) - value - carry;
-            const uint16_t result16 = static_cast<uint16_t>(result);
-
-            F = 0;
-
-            if (result16 & 0x8000)
-                F |= FLAG_S;
-
-            if (result16 == 0)
-                F |= FLAG_Z;
-
-            if ((oldHL & 0x0FFF) < ((value & 0x0FFF) + carry))
-                F |= FLAG_H;
-
-            if (((oldHL ^ value) & (oldHL ^ result16) & 0x8000) != 0)
-                F |= FLAG_PV;
-
-            F |= FLAG_N;
-
-            if (result & 0x10000)
-                F |= FLAG_C;
-
-            F |= static_cast<uint8_t>((result16 >> 8) & (FLAG_Y | FLAG_X));
-
-            setHL(result16);
-
+            sbcHL(getBC());
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2855,10 +2912,15 @@ int CPU::executeED()
         }
 
         case 0x45: // RETN
+        case 0x55: // RETN
+        case 0x5D: // RETN
+        case 0x65: // RETN
+        case 0x6D: // RETN
+        case 0x75: // RETN
+        case 0x7D: // RETN
         {
             PC = pop16();
             IFF1 = IFF2;
-
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -2931,36 +2993,7 @@ int CPU::executeED()
 
         case 0x52: // SBC HL,DE
         {
-            const uint32_t carry = (F & FLAG_C) ? 1 : 0;
-            const uint16_t oldHL = getHL();
-            const uint16_t value = getDE();
-
-            const uint32_t result = static_cast<uint32_t>(oldHL) - value - carry;
-            const uint16_t result16 = static_cast<uint16_t>(result);
-
-            F = 0;
-
-            if (result16 & 0x8000)
-                F |= FLAG_S;
-
-            if (result16 == 0)
-                F |= FLAG_Z;
-
-            if ((oldHL & 0x0FFF) < ((value & 0x0FFF) + carry))
-                F |= FLAG_H;
-
-            if (((oldHL ^ value) & (oldHL ^ result16) & 0x8000) != 0)
-                F |= FLAG_PV;
-
-            F |= FLAG_N;
-
-            if (result & 0x10000)
-                F |= FLAG_C;
-
-            F |= static_cast<uint8_t>((result16 >> 8) & (FLAG_Y | FLAG_X));
-
-            setHL(result16);
-
+            sbcHL(getDE());
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -3068,6 +3101,12 @@ int CPU::executeED()
             return ED_CYCLE_COUNTS[opcode];
         }
 
+        case 0x62: // SBC HL,HL
+        {
+            sbcHL(getHL());
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
         case 0x63: // LD (nn),HL
         {
             const uint16_t address = fetch16();
@@ -3160,6 +3199,12 @@ int CPU::executeED()
         case 0x71: // OUT (C),0
         {
             writeIO(C, 0x00);
+            return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0x72: // SBC HL,SP
+        {
+            sbcHL(SP);
             return ED_CYCLE_COUNTS[opcode];
         }
 
@@ -3443,6 +3488,34 @@ int CPU::executeED()
             F |= adjusted & (FLAG_Y | FLAG_X);
 
             if (result != 0 && newBC != 0)
+            {
+                PC = static_cast<uint16_t>(PC - 2);
+                return 21;
+            }
+
+            return 16;
+        }
+
+        case 0xB3: // OTIR
+        {
+            const uint8_t value = read8(getHL());
+
+            writeIO(C, value);
+
+            setHL(static_cast<uint16_t>(getHL() + 1));
+            B = static_cast<uint8_t>(B - 1);
+
+            const uint8_t oldCarry = F & FLAG_C;
+
+            F = oldCarry;
+
+            if (B == 0)
+                F |= FLAG_Z;
+
+            if (value & 0x80)
+                F |= FLAG_N;
+
+            if (B != 0)
             {
                 PC = static_cast<uint16_t>(PC - 2);
                 return 21;
@@ -3813,6 +3886,22 @@ int CPU::executeFD()
         case 0xE1: // POP IY
         {
             IY = pop16();
+            return FD_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xE3: // EX (SP),IY
+        {
+            const uint8_t lo = read8(SP);
+            const uint8_t hi = read8(static_cast<uint16_t>(SP + 1));
+
+            const uint16_t value =
+                static_cast<uint16_t>(lo | (hi << 8));
+
+            write8(SP, static_cast<uint8_t>(IY & 0xFF));
+            write8(static_cast<uint16_t>(SP + 1), static_cast<uint8_t>(IY >> 8));
+
+            IY = value;
+
             return FD_CYCLE_COUNTS[opcode];
         }
 

@@ -381,6 +381,7 @@ class CPU
         void addA(uint8_t value);
         void adcA(uint8_t value);
         void addHL(uint16_t value);
+        void sbcHL(uint16_t value);
         void subA(uint8_t value);
         void sbcA(uint8_t value);
         void xorA(uint8_t value);
