@@ -166,3 +166,8 @@ std::string joinArgs(const std::vector<std::string>& args, size_t start)
 
     return oss.str();
 }
+
+uint16_t make16(uint8_t hi, uint8_t lo)
+{
+    return static_cast<uint16_t>((static_cast<uint16_t>(hi) << 8) | lo);
+}

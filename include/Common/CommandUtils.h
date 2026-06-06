@@ -36,5 +36,7 @@ std::string trimCopy(std::string s);
 std::string sanitizeAddrToken(std::string s);
 std::string joinArgs(const std::vector<std::string>& args, size_t start);
 
+uint16_t make16(uint8_t hi, uint8_t lo);
+
 #endif // COMMANDUTILS_H_INCLUDED
 

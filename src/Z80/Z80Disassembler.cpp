@@ -12,6 +12,7 @@
 Z80Disassembler::Z80Disassembler(ReadByteCallback reader) :
     readByte(reader)
 {
+
 }
 
 uint8_t Z80Disassembler::read(uint16_t address) const

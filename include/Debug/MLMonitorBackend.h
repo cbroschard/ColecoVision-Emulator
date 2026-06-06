@@ -9,8 +9,11 @@
 #define MLMONITORBACKEND_H
 
 #include <cstdint>
+#include <string>
 #include "Cartridge.h"
+#include "Common/CommandUtils.h"
 #include "VDP.h"
+#include "Z80/Z80Disassembler.h"
 
 // Forward declarations
 class Bus;
@@ -48,6 +51,11 @@ class MLMonitorBackend
         // PC getter/setter
         uint16_t getPC() const;
         void setPC(uint16_t address);
+
+        // Step Command API
+        Z80DisassembledInstruction disassembleAt(uint16_t address) const;
+        int stepInstruction();
+        void printCPUState() const;
 
         // Debug memory access through CPU/bus path
         uint8_t debugRead8(uint16_t address) const;
