@@ -525,6 +525,7 @@ class CPU
 
         int opLDHLFromImm16Address();
         int opLDAddrImm16FromHL();
+        int opLDSPHL();
 
         int opJRNZ();
         int opJRZ();
@@ -539,6 +540,7 @@ class CPU
         int opRLCA();
         int opRLA();
         int opSCF();
+        int opCCF();
         int opDAA();
 
         int opRST(uint16_t address);

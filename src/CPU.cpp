@@ -1047,6 +1047,7 @@ void CPU::initializeOpcodeTable()
     // 16-bit loads
     opcodeTable[0x22] = [this]() { return opLDAddrImm16FromHL(); }; // LD (nn),HL
     opcodeTable[0x2A] = [this]() { return opLDHLFromImm16Address(); }; // LD HL,(nn)
+    opcodeTable[0xF9] = [this]() { return opLDSPHL(); }; // LD SP,HL
 
     // Prefixes
     opcodeTable[0xCB] = [this]() { return executeCB(); };
@@ -1070,6 +1071,7 @@ void CPU::initializeOpcodeTable()
     opcodeTable[0x27] = [this]() { return opDAA(); };  // DAA
     opcodeTable[0x2F] = [this]() { return opCPL(); }; // CPL
     opcodeTable[0x37] = [this]() { return opSCF(); };  // SCF
+    opcodeTable[0x3F] = [this]() { return opCCF(); };  // CCF
 
     // RST
     opcodeTable[0xC7] = [this]() { return opRST(0x0000); }; // RST $00
@@ -2004,6 +2006,12 @@ int CPU::opLDAddrImm16FromHL()
     return 16;
 }
 
+int CPU::opLDSPHL()
+{
+    SP = getHL();
+    return 6;
+}
+
 int CPU::opJRNZ()
 {
     const int8_t offset = static_cast<int8_t>(fetch8());
@@ -2172,6 +2180,27 @@ int CPU::opSCF()
     F |= A & (FLAG_Y | FLAG_X);
 
     F |= FLAG_C;
+
+    return 4;
+}
+
+int CPU::opCCF()
+{
+    const bool oldCarry = (F & FLAG_C) != 0;
+
+    // CCF preserves S, Z, and P/V.
+    // H becomes old C.
+    // N is reset.
+    // C is complemented.
+    F &= static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_PV);
+
+    // Undocumented flags copy from A bits 5 and 3.
+    F |= A & (FLAG_Y | FLAG_X);
+
+    if (oldCarry)
+        F |= FLAG_H;
+    else
+        F |= FLAG_C;
 
     return 4;
 }
@@ -3167,6 +3196,40 @@ int CPU::executeED()
             SP = static_cast<uint16_t>(lo | (hi << 8));
 
             return ED_CYCLE_COUNTS[opcode];
+        }
+
+        case 0xA0: // LDI
+        {
+            const uint8_t value = read8(getHL());
+
+            write8(getDE(), value);
+
+            setHL(static_cast<uint16_t>(getHL() + 1));
+            setDE(static_cast<uint16_t>(getDE() + 1));
+            setBC(static_cast<uint16_t>(getBC() - 1));
+
+            // LDI preserves S, Z, and C.
+            const uint8_t preserved = F & static_cast<uint8_t>(FLAG_S | FLAG_Z | FLAG_C);
+
+            F = preserved;
+
+            // H and N are reset.
+
+            // P/V is set if BC is not zero after decrement.
+            if (getBC() != 0)
+                F |= FLAG_PV;
+
+            // Undocumented flags for LDI:
+            // bits 5 and 3 come from A + copied value.
+            const uint8_t sum = static_cast<uint8_t>(A + value);
+
+            if (sum & 0x02)
+                F |= FLAG_Y; // bit 5
+
+            if (sum & 0x08)
+                F |= FLAG_X; // bit 3
+
+            return 16;
         }
 
         case 0xA1: // CPI
