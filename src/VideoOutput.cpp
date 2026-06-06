@@ -5,6 +5,7 @@
 // non-commercial use only. Redistribution, modification, or use
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
+#include <algorithm>
 #include <stdexcept>
 #include "VideoOutput.h"
 
@@ -20,11 +21,12 @@ VideoOutput::VideoOutput() :
         );
     }
 
-    window = SDL_CreateWindow(
+    window = SDL_CreateWindow
+    (
         "ColecoVision Emulator",
         SCREEN_WIDTH * SCALE,
         SCREEN_HEIGHT * SCALE,
-        0
+        SDL_WINDOW_RESIZABLE
     );
 
     if (!window)
@@ -99,7 +101,7 @@ void VideoOutput::clear()
 
 void VideoOutput::present()
 {
-    if (!renderer || !texture)
+    if (!window || !renderer || !texture)
         return;
 
     SDL_UpdateTexture(
@@ -112,11 +114,30 @@ void VideoOutput::present()
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
+    int windowWidth = 0;
+    int windowHeight = 0;
+
+    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+
+    const float scaleX =
+        static_cast<float>(windowWidth) / static_cast<float>(SCREEN_WIDTH);
+
+    const float scaleY =
+        static_cast<float>(windowHeight) / static_cast<float>(SCREEN_HEIGHT);
+
+    const float scale = std::min(scaleX, scaleY);
+
+    const float outputWidth =
+        static_cast<float>(SCREEN_WIDTH) * scale;
+
+    const float outputHeight =
+        static_cast<float>(SCREEN_HEIGHT) * scale;
+
     SDL_FRect dest;
-    dest.x = 0.0f;
-    dest.y = 0.0f;
-    dest.w = static_cast<float>(SCREEN_WIDTH * SCALE);
-    dest.h = static_cast<float>(SCREEN_HEIGHT * SCALE);
+    dest.x = (static_cast<float>(windowWidth) - outputWidth) * 0.5f;
+    dest.y = (static_cast<float>(windowHeight) - outputHeight) * 0.5f;
+    dest.w = outputWidth;
+    dest.h = outputHeight;
 
     SDL_RenderTexture(renderer, texture, nullptr, &dest);
 
