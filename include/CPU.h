@@ -431,6 +431,10 @@ class CPU
         int opCALLZImm16();
         int opCALLNCImm16();
         int opCALLCImm16();
+        int opCALLMImm16();
+        int opCALLPOImm16();
+        int opCALLPEImm16();
+        int opCALLPImm16();
 
         int opPUSHBC();
         int opPUSHDE();
