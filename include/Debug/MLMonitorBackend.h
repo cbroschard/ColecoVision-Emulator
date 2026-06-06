@@ -55,7 +55,12 @@ class MLMonitorBackend
         // Step Command API
         Z80DisassembledInstruction disassembleAt(uint16_t address) const;
         int stepInstruction();
+
         void printCPUState() const;
+        void printCPUIRQState() const;
+        void printCPUCycles() const;
+        void printCPUFlags() const;
+        void printCPUStack(int count) const;
 
         // Debug memory access through CPU/bus path
         uint8_t debugRead8(uint16_t address) const;

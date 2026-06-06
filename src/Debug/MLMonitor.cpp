@@ -6,6 +6,7 @@
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
 #include "Debug/CartridgeCommand.h"
+#include "Debug/CPUCommand.h"
 #include "Debug/DisassembleCommand.h"
 #include "Debug/GoCommand.h"
 #include "Debug/MemoryDumpCommand.h"
@@ -18,6 +19,7 @@ MLMonitor::MLMonitor() :
     outputFileEnabled(false)
 {
     registerCommand(std::make_unique<CartridgeCommand>());
+    registerCommand(std::make_unique<CPUCommand>());
     registerCommand(std::make_unique<DisassembleCommand>());
     registerCommand(std::make_unique<GoCommand>());
     registerCommand(std::make_unique<MemoryDumpCommand>());
