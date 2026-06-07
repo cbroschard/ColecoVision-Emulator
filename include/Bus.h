@@ -13,6 +13,7 @@
 #include <iomanip>
 #include "Controller.h"
 #include "Memory.h"
+#include "Debug/MLMonitor.h"
 #include "PSG.h"
 #include "VDP.h"
 
@@ -24,7 +25,8 @@ class Bus
 
     inline void attachController1Instance(Controller* controller1) { this->controller1 = controller1; }
     inline void attachController2Instance(Controller* controller2) { this->controller2 = controller2; }
-    inline void attachMemoryInstance(Memory* mem) { this->mem = mem; }
+    inline void attachMemoryInstance(Memory* memory) { this->memory = memory; }
+    inline void attachMLMonitorInstance(MLMonitor* mlMonitor) { this->mlMonitor = mlMonitor; }
     inline void attachPSGInstance(PSG* psg) { this->psg = psg; }
     inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
@@ -40,7 +42,8 @@ class Bus
         // Non-owning pointers
         Controller* controller1;
         Controller* controller2;
-        Memory* mem;
+        Memory* memory;
+        MLMonitor* mlMonitor;
         PSG* psg;
         VDP* vdp;
 };

@@ -10,7 +10,8 @@
 Bus::Bus() :
     controller1(nullptr),
     controller2(nullptr),
-    mem(nullptr),
+    memory(nullptr),
+    mlMonitor(nullptr),
     psg(nullptr),
     vdp(nullptr)
 {
@@ -21,18 +22,36 @@ Bus::~Bus() = default;
 
 uint8_t Bus::readMemory(uint16_t address)
 {
-    if (!mem)
+    if (!memory)
         return 0xFF;
 
-    return mem->read(address);
+    const uint8_t value = memory->read(address);
+
+    if (mlMonitor)
+    {
+        if (mlMonitor->checkWatchRead(address, value))
+        {
+            mlMonitor->requestBreak();
+        }
+    }
+
+    return value;
 }
 
 void Bus::writeMemory(uint16_t address, uint8_t value)
 {
-    if (!mem)
+    if (!memory)
         return;
 
-    mem->write(address, value);
+    memory->write(address, value);
+
+    if (mlMonitor)
+    {
+        if (mlMonitor->checkWatchWrite(address, value))
+        {
+            mlMonitor->requestBreak();
+        }
+    }
 }
 
 uint8_t Bus::readIO(uint8_t port)

@@ -64,6 +64,9 @@ class MLMonitor
         bool checkWatchRead(uint16_t address, uint8_t value);
         std::vector<uint16_t> getReadWatchAddresses() const;
 
+        inline void requestBreak() { breakRequested = true; }
+        bool consumeBreakRequested();
+
         // Helpers
         inline bool breakpointsEmpty() const { return breakpoints.empty(); }
         inline bool hasBreakpoint(uint16_t pc) { return (breakpoints.find(pc) != breakpoints.end()); }
@@ -75,6 +78,7 @@ class MLMonitor
         MLMonitorBackend* mlmonitorBackend;
 
         bool running;
+        bool breakRequested;
 
         // std::cout queue
         std::mutex asyncMutex;

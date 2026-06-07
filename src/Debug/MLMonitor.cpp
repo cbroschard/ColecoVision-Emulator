@@ -19,6 +19,7 @@
 
 MLMonitor::MLMonitor() :
     running(false),
+    breakRequested(false),
     outputFileEnabled(false)
 {
     registerCommand(std::make_unique<BreakpointCommand>());
@@ -221,6 +222,15 @@ bool MLMonitor::checkWatchRead(uint16_t address, uint8_t value)
 std::vector<uint16_t> MLMonitor::getReadWatchAddresses() const
 {
     return std::vector<uint16_t>(readWatches.begin(), readWatches.end());
+}
+
+bool MLMonitor::consumeBreakRequested()
+{
+    if (!breakRequested)
+        return false;
+
+    breakRequested = false;
+    return true;
 }
 
 std::vector<std::string> MLMonitor::drainAsyncLines()

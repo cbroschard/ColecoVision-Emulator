@@ -164,6 +164,12 @@ void ColecoVisionSystem::run()
             }
 
             lastVDPInterrupt = vdpInterrupt;
+
+            if (mlMonitor->consumeBreakRequested())
+            {
+                monitorController->openMonitor();
+                break;
+            }
         }
 
         videoOutput->clear();
@@ -202,6 +208,7 @@ void ColecoVisionSystem::wireUp()
     bus->attachController1Instance(controller1.get());
     bus->attachController2Instance(controller2.get());
     bus->attachMemoryInstance(memory.get());
+    bus->attachMLMonitorInstance(mlMonitor.get());
     bus->attachPSGInstance(psg.get());
     bus->attachVDPInstance(vdp.get());
 
