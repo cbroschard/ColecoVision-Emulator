@@ -62,6 +62,10 @@ class MLMonitor
         bool checkWatchRead(uint16_t address, uint8_t value);
         std::vector<uint16_t> getReadWatchAddresses() const;
 
+        // Helpers
+        inline bool breakpointsEmpty() const { return breakpoints.empty(); }
+        inline bool hasBreakpoint(uint16_t pc) { return (breakpoints.find(pc) != breakpoints.end()); }
+
     protected:
 
     private:
