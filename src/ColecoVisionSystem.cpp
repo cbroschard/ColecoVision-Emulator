@@ -5,6 +5,8 @@
 // non-commercial use only. Redistribution, modification, or use
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include "ColecoVisionSystem.h"
 
@@ -120,6 +122,23 @@ void ColecoVisionSystem::run()
 
         while (frameCycles < CYCLES_PER_FRAME)
         {
+            const uint16_t pc = cpu->getPC();
+
+            if (mlMonitor->hasBreakpoint(pc))
+            {
+                std::ostringstream oss;
+
+                oss
+                    << "Breakpoint hit at $"
+                    << std::uppercase << std::hex << std::setw(4) << std::setfill('0')
+                    << pc;
+
+                mlMonitor->queueAsyncLine(oss.str());
+
+                monitorController->openMonitor();
+                break;
+            }
+
             // Maskable IRQ line is only for expansion/future devices.
             // Stock ColecoVision VDP interrupt does NOT go here.
             cpu->setIRQ(irqLine->isAsserted());

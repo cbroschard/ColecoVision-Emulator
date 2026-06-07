@@ -38,6 +38,8 @@ class MLMonitor
         void enterMonitor();
         std::string getPrompt() const;
 
+        // std::cout queuing/draining
+        void queueAsyncLine(const std::string& s);
         std::vector<std::string> drainAsyncLines();
 
          // Breakpoint management
@@ -97,9 +99,6 @@ class MLMonitor
         void handleCommand(const std::string& line);
         void handleOutputFileCommand(const std::vector<std::string>& args);
         void writeOutputFileBlock(const std::string& cmdLine, const std::string& output);
-
-        // std::cout queuing/draining
-        void queueAsyncLine(const std::string& s);
 };
 
 #endif // MLMONITOR_H
