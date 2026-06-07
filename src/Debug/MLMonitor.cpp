@@ -261,7 +261,7 @@ void MLMonitor::handleCommand(const std::string& line)
         return;
     }
 
-    if (cmd == "help" || cmd == "h" || cmd == "?")
+        if (cmd == "help" || cmd == "h" || cmd == "?")
     {
         // If user typed: help <command>
         if (args.size() >= 2)
@@ -290,19 +290,68 @@ void MLMonitor::handleCommand(const std::string& line)
         }
 
         // Plain "help" => main help
-        std::map<std::string, std::vector<std::string>> grouped;
+        std::map<std::string, std::vector<const MonitorCommand*>> grouped;
 
         for (const auto& kv : commands)
-            grouped[kv.second->category()].push_back(kv.second->shortHelp());
+        {
+            grouped[kv.second->category()].push_back(kv.second.get());
+        }
+
+        std::vector<std::string> categories;
+
+        for (const auto& kv : grouped)
+        {
+            categories.push_back(kv.first);
+        }
+
+        std::sort(categories.begin(), categories.end(),
+            [&grouped](const std::string& a, const std::string& b)
+            {
+                const auto& aCommands = grouped[a];
+                const auto& bCommands = grouped[b];
+
+                const auto aMin = std::min_element(aCommands.begin(), aCommands.end(),
+                    [](const MonitorCommand* lhs, const MonitorCommand* rhs)
+                    {
+                        return lhs->order() < rhs->order();
+                    });
+
+                const auto bMin = std::min_element(bCommands.begin(), bCommands.end(),
+                    [](const MonitorCommand* lhs, const MonitorCommand* rhs)
+                    {
+                        return lhs->order() < rhs->order();
+                    });
+
+                const int aOrder = (*aMin)->order();
+                const int bOrder = (*bMin)->order();
+
+                if (aOrder != bOrder)
+                    return aOrder < bOrder;
+
+                return a < b;
+            });
 
         std::cout << "Available commands:\n";
 
-        for (auto& [cat, cmds] : grouped)
+        for (const std::string& cat : categories)
         {
+            auto& cmds = grouped[cat];
+
+            std::sort(cmds.begin(), cmds.end(),
+                [](const MonitorCommand* a, const MonitorCommand* b)
+                {
+                    if (a->order() != b->order())
+                        return a->order() < b->order();
+
+                    return a->name() < b->name();
+                });
+
             std::cout << "  " << cat << ":\n";
 
-            for (auto& helpLine : cmds)
-                std::cout << "    " << helpLine << "\n";
+            for (const MonitorCommand* command : cmds)
+            {
+                std::cout << "    " << command->shortHelp() << "\n";
+            }
         }
 
         return;
