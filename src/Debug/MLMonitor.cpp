@@ -11,6 +11,7 @@
 #include "Debug/DisassembleCommand.h"
 #include "Debug/GoCommand.h"
 #include "Debug/MemoryDumpCommand.h"
+#include "Debug/MemoryEditCommand.h"
 #include "Debug/MLMonitor.h"
 #include "Debug/StepCommand.h"
 #include "Debug/VDPCommand.h"
@@ -25,6 +26,7 @@ MLMonitor::MLMonitor() :
     registerCommand(std::make_unique<DisassembleCommand>());
     registerCommand(std::make_unique<GoCommand>());
     registerCommand(std::make_unique<MemoryDumpCommand>());
+    registerCommand(std::make_unique<MemoryEditCommand>());
     registerCommand(std::make_unique<StepCommand>());
     registerCommand(std::make_unique<VDPCommand>());
 }
