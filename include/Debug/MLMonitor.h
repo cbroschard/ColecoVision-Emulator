@@ -16,6 +16,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "Debug/MLMonitorBackend.h"
 #include "Debug/MonitorCommand.h"
@@ -39,6 +40,28 @@ class MLMonitor
 
         std::vector<std::string> drainAsyncLines();
 
+         // Breakpoint management
+        inline void addBreakpoint(uint16_t bp) { breakpoints.insert(bp); }
+        inline void clearAllBreakpoints() { breakpoints.clear(); }
+        void clearBreakpoint(uint16_t bp);
+        void listBreakpoints() const;
+
+        // Watch write handling
+        void addWriteWatch(uint16_t address);
+        void clearWriteWatch(uint16_t address);
+        void clearAllWriteWatches();
+        void listWriteWatches() const;
+        bool checkWatchWrite(uint16_t address, uint8_t newVal);
+        std::vector<uint16_t> getWriteWatchAddresses() const;
+
+        // Watch read handling
+        void addReadWatch(uint16_t address);
+        void clearReadWatch(uint16_t address);
+        void clearAllReadWatches();
+        void listReadWatches() const;
+        bool checkWatchRead(uint16_t address, uint8_t value);
+        std::vector<uint16_t> getReadWatchAddresses() const;
+
     protected:
 
     private:
@@ -50,6 +73,11 @@ class MLMonitor
         // std::cout queue
         std::mutex asyncMutex;
         std::vector<std::string> asyncLines;
+
+        // Breakpoint
+        std::unordered_set<uint16_t> breakpoints;
+        std::unordered_map<uint16_t, uint8_t> writeWatches; // addr -> last value
+        std::unordered_set<uint16_t> readWatches;
 
         // Console output to file
         std::ofstream outputFile;
@@ -65,6 +93,9 @@ class MLMonitor
         void handleCommand(const std::string& line);
         void handleOutputFileCommand(const std::vector<std::string>& args);
         void writeOutputFileBlock(const std::string& cmdLine, const std::string& output);
+
+        // std::cout queuing/draining
+        void queueAsyncLine(const std::string& s);
 };
 
 #endif // MLMONITOR_H
