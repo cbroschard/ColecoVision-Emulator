@@ -14,7 +14,7 @@ MemoryDumpCommand::~MemoryDumpCommand() = default;
 
 int MemoryDumpCommand::order() const
 {
-    return 5;
+    return 10;
 }
 
 std::string MemoryDumpCommand::name() const
