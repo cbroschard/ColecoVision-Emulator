@@ -15,6 +15,7 @@
 #include "Debug/MLMonitor.h"
 #include "Debug/StepCommand.h"
 #include "Debug/VDPCommand.h"
+#include "Debug/WatchCommand.h"
 
 MLMonitor::MLMonitor() :
     running(false),
@@ -29,6 +30,7 @@ MLMonitor::MLMonitor() :
     registerCommand(std::make_unique<MemoryEditCommand>());
     registerCommand(std::make_unique<StepCommand>());
     registerCommand(std::make_unique<VDPCommand>());
+    registerCommand(std::make_unique<WatchCommand>());
 }
 
 MLMonitor::~MLMonitor()
