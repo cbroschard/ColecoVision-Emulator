@@ -66,10 +66,16 @@ uint8_t VDP::readStatus()
 {
     const uint8_t result = statusReg;
 
-    // Reading status clears VBlank, 5th sprite, collision, and IRQ latch.
-    statusReg = 0x00;
+    // Reading status clears the latched status flags:
+    // Bit 7 = VBlank / interrupt pending
+    // Bit 6 = 5th sprite
+    // Bit 5 = sprite collision
+    //
+    // Bits 0-4 are the 5th sprite number and may remain as-is,
+    // but should only be considered valid if bit 6 was set in result.
+    statusReg &= 0x1F;
 
-    // Reading status also resets the control latch.
+    // Reading the status/control port resets the two-byte VDP control latch.
     controlLatch = false;
 
     updateIRQState();
