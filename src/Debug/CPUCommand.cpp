@@ -41,7 +41,6 @@ std::string CPUCommand::help() const
         "\n"
         "Arguments:\n"
         "    regs       Show CPU registers, flags, interrupt state, and cycle count.\n"
-        "               This is the default if no subcommand is provided.\n"
         "    flags      Show decoded Z80 flag bits from the F register.\n"
         "    irq        Show interrupt state such as IFF1, IFF2, interrupt mode,\n"
         "               HALT state, and pending interrupt information if available.\n"
