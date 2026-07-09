@@ -10,13 +10,13 @@
 
 #include <cstdint>
 #include <string>
+#include "Bus.h"
 #include "Cartridge.h"
 #include "Common/CommandUtils.h"
 #include "VDP.h"
 #include "Z80/Z80Disassembler.h"
 
 // Forward declarations
-class Bus;
 class ColecoVisionSystem;
 class Controller;
 class CPU;
@@ -40,6 +40,9 @@ class MLMonitorBackend
         inline void attachVDPInstance(VDP* vdp) { this->vdp = vdp; }
 
         void enterMonitor();
+
+        // Bus
+        inline uint8_t readRAM(uint16_t address) const { return bus->readMemory(address); }
 
         // Cartridge
         CartridgeInfo getCartridgeInfo() const;
@@ -65,9 +68,6 @@ class MLMonitorBackend
         // Debug memory access through CPU/bus path
         uint8_t debugRead8(uint16_t address) const;
         void debugWrite8(uint16_t address, uint8_t value);
-
-        // Memory functions
-        uint8_t readRAM(uint16_t address) const;
 
         // VDP Functions
         uint8_t getVDPRegister(uint8_t index) const;

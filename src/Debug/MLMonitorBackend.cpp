@@ -5,7 +5,6 @@
 // non-commercial use only. Redistribution, modification, or use
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
-#include "Bus.h"
 #include "Cartridge.h"
 #include "ColecoVisionSystem.h"
 #include "Controller.h"
@@ -337,11 +336,6 @@ uint8_t MLMonitorBackend::debugRead8(uint16_t address) const
 void MLMonitorBackend::debugWrite8(uint16_t address, uint8_t value)
 {
     cpu->debugWrite8(address, value);
-}
-
-uint8_t MLMonitorBackend::readRAM(uint16_t address) const
-{
-    return memory->read(address);
 }
 
 uint8_t MLMonitorBackend::getVDPRegister(uint8_t index) const

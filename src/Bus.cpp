@@ -6,6 +6,7 @@
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
 #include "Bus.h"
+#include "Debug/MLMonitor.h"
 
 Bus::Bus() :
     controller1(nullptr),

@@ -8,12 +8,13 @@
 #ifndef BUS_H
 #define BUS_H
 
+class MLMonitor;
+
 #include <cstdint>
 #include <iostream>
 #include <iomanip>
 #include "Controller.h"
 #include "Memory.h"
-#include "Debug/MLMonitor.h"
 #include "PSG.h"
 #include "VDP.h"
 
