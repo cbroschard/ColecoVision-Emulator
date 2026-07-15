@@ -86,6 +86,8 @@ class MLMonitor
 
         // Breakpoint
         std::unordered_set<uint16_t> breakpoints;
+
+        // Watches
         std::unordered_map<uint16_t, uint8_t> writeWatches; // addr -> last value
         std::unordered_set<uint16_t> readWatches;
 
