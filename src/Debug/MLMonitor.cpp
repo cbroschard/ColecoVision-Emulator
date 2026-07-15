@@ -5,6 +5,8 @@
 // non-commercial use only. Redistribution, modification, or use
 // of this code in whole or in part for any other purpose is
 // strictly prohibited without the prior written consent of the author.
+#include <iomanip>
+#include <stdexcept>
 #include "Debug/BreakpointCommand.h"
 #include "Debug/CartridgeCommand.h"
 #include "Debug/CPUCommand.h"
@@ -89,11 +91,29 @@ void MLMonitor::clearBreakpoint(uint16_t bp)
 
 void MLMonitor::listBreakpoints() const
 {
-    int index = 0;
-    for (auto list : breakpoints)
+    std::vector<uint16_t> sortedBreakpoints(
+        breakpoints.begin(),
+        breakpoints.end());
+
+    std::sort(
+        sortedBreakpoints.begin(),
+        sortedBreakpoints.end());
+
+    for (std::size_t index = 0;
+         index < sortedBreakpoints.size();
+         ++index)
     {
-        std::cout << "[" << index << "]" << "  $" << std::hex << std::setw(4) << std::setfill('0') << list << std::endl;
-        index++;
+        std::cout
+            << "[" << index << "]  $"
+            << std::uppercase
+            << std::hex
+            << std::setw(4)
+            << std::setfill('0')
+            << sortedBreakpoints[index]
+            << std::dec
+            << std::nouppercase
+            << std::setfill(' ')
+            << "\n";
     }
 }
 
