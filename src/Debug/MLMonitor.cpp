@@ -7,6 +7,7 @@
 // strictly prohibited without the prior written consent of the author.
 #include <iomanip>
 #include <stdexcept>
+#include "Debug/AssembleCommand.H"
 #include "Debug/BreakpointCommand.h"
 #include "Debug/CartridgeCommand.h"
 #include "Debug/CPUCommand.h"
@@ -24,6 +25,7 @@ MLMonitor::MLMonitor() :
     breakRequested(false),
     outputFileEnabled(false)
 {
+    registerCommand(std::make_unique<AssembleCommand>());
     registerCommand(std::make_unique<BreakpointCommand>());
     registerCommand(std::make_unique<CartridgeCommand>());
     registerCommand(std::make_unique<CPUCommand>());
@@ -77,6 +79,21 @@ void MLMonitor::enterMonitor()
 
 std::string MLMonitor::getPrompt() const
 {
+    const auto iterator = commands.find("a");
+
+    if (iterator != commands.end())
+    {
+        const auto* assembleCommand =
+            dynamic_cast<const AssembleCommand*>(
+                iterator->second.get());
+
+        if (assembleCommand != nullptr &&
+            assembleCommand->isInteractiveActive())
+        {
+            return assembleCommand->currentPrompt();
+        }
+    }
+
     return "> ";
 }
 
@@ -263,7 +280,39 @@ std::vector<std::string> MLMonitor::drainAsyncLines()
 
 void MLMonitor::handleCommand(const std::string& line)
 {
+    /*
+     * Interactive assembler input must be handled before normal command
+     * parsing. Otherwise a line such as:
+     *
+     *     LD A,$01
+     *
+     * would be interpreted as a monitor command named "ld".
+     *
+     * Blank input and "." are also passed through so AssembleCommand can
+     * terminate interactive mode.
+     */
+    const auto assembleIterator =
+        commands.find("a");
+
+    if (assembleIterator != commands.end())
+    {
+        auto* assembleCommand =
+            dynamic_cast<AssembleCommand*>(
+                assembleIterator->second.get());
+
+        if (assembleCommand != nullptr &&
+            assembleCommand->isInteractiveActive())
+        {
+            assembleCommand->handleInteractiveLine(
+                *this,
+                line);
+
+            return;
+        }
+    }
+
     std::istringstream iss(line);
+
     std::string cmd;
     iss >> cmd;
 
@@ -271,12 +320,20 @@ void MLMonitor::handleCommand(const std::string& line)
     if (cmd.empty())
         return;
 
-    // Normalize to lowercase
-    std::transform(cmd.begin(), cmd.end(), cmd.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
+    // Normalize the command name to lowercase.
+    std::transform(
+        cmd.begin(),
+        cmd.end(),
+        cmd.begin(),
+        [](unsigned char character)
+        {
+            return static_cast<char>(
+                std::tolower(character));
+        });
 
-    if (cmd == "exit" || cmd == "q" || cmd == "quit")
+    if (cmd == "exit" ||
+        cmd == "q" ||
+        cmd == "quit")
     {
         running = false;
         return;
@@ -286,120 +343,195 @@ void MLMonitor::handleCommand(const std::string& line)
     args.push_back(cmd);
 
     std::string token;
+
     while (iss >> token)
         args.push_back(token);
 
-    if (cmd == "out" || cmd == "capture")
+    if (cmd == "out" ||
+        cmd == "capture")
     {
         handleOutputFileCommand(args);
         return;
     }
 
-        if (cmd == "help" || cmd == "h" || cmd == "?")
+    if (cmd == "help" ||
+        cmd == "h" ||
+        cmd == "?")
     {
-        // If user typed: help <command>
+        // help <command>
         if (args.size() >= 2)
         {
-            std::string topic = args[1];
+            std::string topic =
+                args[1];
 
-            std::transform(topic.begin(), topic.end(), topic.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
+            std::transform(
+                topic.begin(),
+                topic.end(),
+                topic.begin(),
+                [](unsigned char character)
+                {
+                    return static_cast<char>(
+                        std::tolower(character));
+                });
 
-            auto it = commands.find(topic);
-            if (it != commands.end())
+            const auto commandIterator =
+                commands.find(topic);
+
+            if (commandIterator != commands.end())
             {
-                const std::string txt = it->second->help();
-                std::cout << txt;
+                const std::string text =
+                    commandIterator->second->help();
 
-                if (!txt.empty() && txt.back() != '\n')
+                std::cout << text;
+
+                if (!text.empty() &&
+                    text.back() != '\n')
+                {
                     std::cout << "\n";
+                }
             }
             else
             {
-                std::cout << "Unknown command: " << topic << "\n";
+                std::cout
+                    << "Unknown command: "
+                    << topic
+                    << "\n";
             }
 
             return;
         }
 
-        // Plain "help" => main help
-        std::map<std::string, std::vector<const MonitorCommand*>> grouped;
+        // Plain help command.
+        std::map<
+            std::string,
+            std::vector<const MonitorCommand*>>
+            groupedCommands;
 
-        for (const auto& kv : commands)
+        for (const auto& commandEntry : commands)
         {
-            grouped[kv.second->category()].push_back(kv.second.get());
+            groupedCommands[
+                commandEntry.second->category()]
+                .push_back(
+                    commandEntry.second.get());
         }
 
         std::vector<std::string> categories;
 
-        for (const auto& kv : grouped)
+        for (const auto& categoryEntry :
+             groupedCommands)
         {
-            categories.push_back(kv.first);
+            categories.push_back(
+                categoryEntry.first);
         }
 
-        std::sort(categories.begin(), categories.end(),
-            [&grouped](const std::string& a, const std::string& b)
+        std::sort(
+            categories.begin(),
+            categories.end(),
+            [&groupedCommands](
+                const std::string& left,
+                const std::string& right)
             {
-                const auto& aCommands = grouped[a];
-                const auto& bCommands = grouped[b];
+                const auto& leftCommands =
+                    groupedCommands[left];
 
-                const auto aMin = std::min_element(aCommands.begin(), aCommands.end(),
-                    [](const MonitorCommand* lhs, const MonitorCommand* rhs)
-                    {
-                        return lhs->order() < rhs->order();
-                    });
+                const auto& rightCommands =
+                    groupedCommands[right];
 
-                const auto bMin = std::min_element(bCommands.begin(), bCommands.end(),
-                    [](const MonitorCommand* lhs, const MonitorCommand* rhs)
-                    {
-                        return lhs->order() < rhs->order();
-                    });
+                const auto leftMinimum =
+                    std::min_element(
+                        leftCommands.begin(),
+                        leftCommands.end(),
+                        [](
+                            const MonitorCommand* lhs,
+                            const MonitorCommand* rhs)
+                        {
+                            return lhs->order() <
+                                   rhs->order();
+                        });
 
-                const int aOrder = (*aMin)->order();
-                const int bOrder = (*bMin)->order();
+                const auto rightMinimum =
+                    std::min_element(
+                        rightCommands.begin(),
+                        rightCommands.end(),
+                        [](
+                            const MonitorCommand* lhs,
+                            const MonitorCommand* rhs)
+                        {
+                            return lhs->order() <
+                                   rhs->order();
+                        });
 
-                if (aOrder != bOrder)
-                    return aOrder < bOrder;
+                const int leftOrder =
+                    (*leftMinimum)->order();
 
-                return a < b;
+                const int rightOrder =
+                    (*rightMinimum)->order();
+
+                if (leftOrder != rightOrder)
+                    return leftOrder < rightOrder;
+
+                return left < right;
             });
 
         std::cout << "Available commands:\n";
 
-        for (const std::string& cat : categories)
+        for (const std::string& category :
+             categories)
         {
-            auto& cmds = grouped[cat];
+            auto& categoryCommands =
+                groupedCommands[category];
 
-            std::sort(cmds.begin(), cmds.end(),
-                [](const MonitorCommand* a, const MonitorCommand* b)
+            std::sort(
+                categoryCommands.begin(),
+                categoryCommands.end(),
+                [](
+                    const MonitorCommand* left,
+                    const MonitorCommand* right)
                 {
-                    if (a->order() != b->order())
-                        return a->order() < b->order();
+                    if (left->order() !=
+                        right->order())
+                    {
+                        return left->order() <
+                               right->order();
+                    }
 
-                    return a->name() < b->name();
+                    return left->name() <
+                           right->name();
                 });
 
-            std::cout << "  " << cat << ":\n";
+            std::cout
+                << "  "
+                << category
+                << ":\n";
 
-            for (const MonitorCommand* command : cmds)
+            for (const MonitorCommand* command :
+                 categoryCommands)
             {
-                std::cout << "    " << command->shortHelp() << "\n";
+                std::cout
+                    << "    "
+                    << command->shortHelp()
+                    << "\n";
             }
         }
 
         return;
     }
 
-    auto it = commands.find(cmd);
-    if (it != commands.end())
+    const auto commandIterator = commands.find(cmd);
+
+    if (commandIterator != commands.end())
     {
-        it->second->execute(*this, args);
+        commandIterator->second->execute(
+            *this,
+            args);
+
+        return;
     }
-    else
-    {
-        std::cout << "Unknown command: " << cmd << "\n";
-    }
+
+    std::cout
+        << "Unknown command: "
+        << cmd
+        << "\n";
 }
 
 void MLMonitor::writeOutputFileBlock(const std::string& cmdLine, const std::string& output)
